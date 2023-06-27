@@ -1,7 +1,5 @@
 ﻿using CulinaryRecipes.API.Models;
 using Microsoft.Extensions.Options;
-using Microsoft.VisualBasic;
-using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace CulinaryRecipes.API.Services
