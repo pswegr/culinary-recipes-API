@@ -1,3 +1,4 @@
+using CulinaryRecipes.API.Extensions;
 using CulinaryRecipes.API.Models;
 using CulinaryRecipes.API.Services;
 
@@ -23,6 +24,8 @@ builder.Services.Configure<CulinaryRecipesDatabaseSettings>(
 builder.Configuration.GetSection("CulinaryRecipesDatabase"));
 
 builder.Services.AddSingleton<RecipesService>();
+builder.Services.AddServices();
+builder.Services.AddAutoMapper(typeof(Program));
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
