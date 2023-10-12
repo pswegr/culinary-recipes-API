@@ -1,13 +1,16 @@
 ﻿using CulinaryRecipes.API.Services.Interfaces;
 using CulinaryRecipes.API.Services;
+using CulinaryRecipes.API.Helpers;
 
 namespace CulinaryRecipes.API.Extensions
 {
     public static class ServicesExtensions
     {
-        public static IServiceCollection AddServices(this IServiceCollection services)
+        public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration config)
         {
-            services.AddTransient<IImageService, ImageService>();
+            services.Configure<CloudinarySettings>(config.GetSection("CloudinarySettings"));
+            services.AddScoped<IRecipesService, RecipesService>();
+            services.AddScoped<IPhotoService, PhotoService>();
 
             return services;
         }
