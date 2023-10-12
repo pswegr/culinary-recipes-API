@@ -2,7 +2,7 @@ name: Build and deploy .NET Core application to Web App CulinaryRecipesAPI202310
 on:
   push:
     branches:
-    - feature/upload-image
+    - master
 env:
   AZURE_WEBAPP_NAME: CulinaryRecipesAPI20231012231909
   AZURE_WEBAPP_PACKAGE_PATH: CulinaryRecipes.API/publish
