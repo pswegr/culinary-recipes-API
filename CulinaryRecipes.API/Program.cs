@@ -1,5 +1,7 @@
+using CulinaryRecipes.API.Extensions;
 using CulinaryRecipes.API.Models;
 using CulinaryRecipes.API.Services;
+using CulinaryRecipes.API.Services.Interfaces;
 
 var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
 
@@ -22,7 +24,8 @@ builder.Services.AddCors(options =>
 builder.Services.Configure<CulinaryRecipesDatabaseSettings>(
 builder.Configuration.GetSection("CulinaryRecipesDatabase"));
 
-builder.Services.AddSingleton<RecipesService>();
+builder.Services.AddApplicationServices(builder.Configuration);
+builder.Services.AddAutoMapper(typeof(Program));
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

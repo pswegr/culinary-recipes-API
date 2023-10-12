@@ -1,10 +1,13 @@
 ﻿using CulinaryRecipes.API.Models;
 using CulinaryRecipes.API.Services;
+using CulinaryRecipes.API.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using MongoDB.Driver.Core.Operations;
+using System.Text.Json;
 
 namespace CulinaryRecipes.API.Controllers
 {
@@ -12,10 +15,14 @@ namespace CulinaryRecipes.API.Controllers
     [ApiController]
     public class RecipesController : ControllerBase
     {
-        private readonly RecipesService _recipesService;
+        private readonly IRecipesService _recipesService;
+        private readonly IPhotoService _photoService;
 
-        public RecipesController(RecipesService recipesService) =>
+        public RecipesController(IRecipesService recipesService, IPhotoService photoService)
+        {
+            _photoService = photoService;
             _recipesService = recipesService;
+        }
 
         [HttpGet]
         public async Task<List<Recipes>> Get() =>
@@ -34,29 +41,46 @@ namespace CulinaryRecipes.API.Controllers
             return recipes;
         }
 
-        [HttpPost]
-        public async Task<IActionResult> Post(Recipes newRecipes)
+        [HttpPost("UpsertWithImage")]
+        public async Task<IActionResult> Upsert([FromForm] string recipe, IFormFile? photo)
         {
-            await _recipesService.CreateAsync(newRecipes);
-
-            return CreatedAtAction(nameof(Get), new { id = newRecipes.id }, newRecipes);
-        }
-
-        [HttpPut("{id:length(24)}")]
-        public async Task<IActionResult> Update(string id, Recipes updatedRecipes)
-        {
-            var recipes = await _recipesService.GetAsync(id);
-
-            if (recipes is null)
+            try
             {
-                return NotFound();
+                Recipes? recipeModel =
+                    JsonSerializer.Deserialize<Recipes>(recipe);
+
+                var photoUploadresult = await _photoService.UploadPhotoAsync(photo);
+
+                if (recipeModel is null)
+                    return BadRequest();
+
+                if (!string.IsNullOrEmpty(recipeModel.id))
+                {
+                    var recipeFromDb = await _recipesService.GetAsync(recipeModel.id);
+
+                    if (recipeFromDb is null)
+                    {
+                        return NotFound();
+                    }
+
+                    await _recipesService.UpdateAsync(recipeModel.id, recipeModel, photoUploadresult);
+
+                    return NoContent();
+                }
+                else
+                {
+                    recipeModel.createdAt = DateTime.UtcNow;
+                    recipeModel.createdBy = "TODO: Admin development";
+                    await _recipesService.CreateAsync(recipeModel, photoUploadresult);
+                    return CreatedAtAction(nameof(Get), new { id = recipeModel.id }, recipeModel);
+                }
             }
-
-            updatedRecipes.id = recipes.id;
-
-            await _recipesService.UpdateAsync(id, updatedRecipes);
-
-            return NoContent();
+            catch
+            {
+                return BadRequest();
+            }
+           
+           
         }
 
         [HttpDelete("{id:length(24)}")]
@@ -78,6 +102,12 @@ namespace CulinaryRecipes.API.Controllers
         public ActionResult<List<string>> GetCategories(string? searchText)
         {
             return _recipesService.GetCategories(searchText);
+        }
+
+        [HttpGet("Tags")]
+        public async Task<ActionResult<List<string>>> GetTags()
+        {
+            return await _recipesService.GetTags();
         }
     }
 }
