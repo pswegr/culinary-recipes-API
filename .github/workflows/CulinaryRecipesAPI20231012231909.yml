@@ -12,12 +12,12 @@ env:
   AZURE_APIM_API_ID: CulinaryRecipesAPI
   AZURE_APIM_APPSERVICEURL: https://culinaryrecipesapi20231012231909.azurewebsites.net
   SWASHBUCLE_ASPNET_CORE_CLI_PACKAGE_VERSION: 6.5.0
-  SWASHBUCKLE_DOTNET_CORE_VERSION: 6.0.x
+  SWASHBUCKLE_DOTNET_CORE_VERSION: 7.0.x
   API_IMPORT_SPECIFICATION_PATH: CulinaryRecipes.API/publish/swagger.json
   API_IMPORT_DLL: CulinaryRecipes.API/bin/Release/net6.0/CulinaryRecipes.API.dll
   API_IMPORT_VERSION: v1
   CONFIGURATION: Release
-  DOTNET_CORE_VERSION: 6.0.x
+  DOTNET_CORE_VERSION: 7.0.x
   WORKING_DIRECTORY: CulinaryRecipes.API
 jobs:
   build:
