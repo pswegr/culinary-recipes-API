@@ -28,7 +28,7 @@ namespace CulinaryRecipes.API.Services
                 var uploadParams = new ImageUploadParams
                 {
                     File = new FileDescription(file.FileName, stream),
-                    Transformation = new Transformation().Height(563).Width(1000).Crop("fill").Gravity("face"),
+                    Transformation = new Transformation().Height(750).Width(1000).Crop("fill").Gravity("face"),
                     Folder = "RecipesWithPassion",
                     Colors = true
                 };
