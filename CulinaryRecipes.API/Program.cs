@@ -14,7 +14,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy(MyAllowSpecificOrigins,
                           policy =>
                           {
-                              policy.WithOrigins("http://localhost:4200")
+                              policy.WithOrigins("https://black-desert-08e3c1910.3.azurestaticapps.net")
                                                   .AllowAnyHeader()
                                                   .AllowAnyMethod();
                           });
