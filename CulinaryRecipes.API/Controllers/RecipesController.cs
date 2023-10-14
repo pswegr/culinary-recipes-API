@@ -1,4 +1,5 @@
-﻿using CulinaryRecipes.API.Models;
+﻿using CloudinaryDotNet.Actions;
+using CulinaryRecipes.API.Models;
 using CulinaryRecipes.API.Services;
 using CulinaryRecipes.API.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
@@ -52,8 +53,12 @@ namespace CulinaryRecipes.API.Controllers
             {
                 Recipes? recipeModel =
                     JsonSerializer.Deserialize<Recipes>(recipe);
+                var photoUploadresult = new ImageUploadResult();
 
-                var photoUploadresult = await _photoService.UploadPhotoAsync(photo);
+                if(photo != null) 
+                {
+                    photoUploadresult = await _photoService.UploadPhotoAsync(photo);
+                }
 
                 if (recipeModel is null)
                     return BadRequest();
