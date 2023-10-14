@@ -28,6 +28,10 @@ namespace CulinaryRecipes.API.Controllers
         public async Task<List<Recipes>> Get() =>
             await _recipesService.GetAsync();
 
+        [HttpGet]
+        public async Task<List<Recipes>> GetPublished() =>
+          await _recipesService.GetPublishedAsync();
+
         [HttpGet("{id:length(24)}")]
         public async Task<ActionResult<Recipes>> Get(string id)
         {
