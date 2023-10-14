@@ -46,7 +46,7 @@ namespace CulinaryRecipes.API.Services
         {
             updatedRecipes.updatedAt = DateTime.UtcNow;
             updatedRecipes.updatedBy = "TODO: Admin development";
-            if (imageUploadResult != null)
+            if (imageUploadResult.SecureUrl.AbsoluteUri != null)
             {
                 updatedRecipes.photo = new Photo
                 {
