@@ -25,6 +25,9 @@ namespace CulinaryRecipes.API.Services
         public async Task<List<Recipes>> GetAsync() =>
                 await _recipesCollection.Find(_ => true).ToListAsync();
 
+        public async Task<List<Recipes>> GetPublishedAsync() =>
+               await _recipesCollection.Find(x => x.published).ToListAsync();
+
         public async Task<Recipes?> GetAsync(string id) =>
             await _recipesCollection.Find(x => x.id == id).FirstOrDefaultAsync();
 
