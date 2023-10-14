@@ -8,6 +8,8 @@ namespace CulinaryRecipes.API.Services.Interfaces
     {
         Task<List<Recipes>> GetAsync();
 
+        Task<List<Recipes>> GetPublishedAsync();
+
         Task<Recipes?> GetAsync(string id);
 
         Task CreateAsync(Recipes newRecipes, ImageUploadResult imageUploadResult);
