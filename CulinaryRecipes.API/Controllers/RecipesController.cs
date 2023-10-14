@@ -24,7 +24,7 @@ namespace CulinaryRecipes.API.Controllers
             _recipesService = recipesService;
         }
 
-        [HttpGet]
+        [HttpGet("GetAll")]
         public async Task<List<Recipes>> Get() =>
             await _recipesService.GetAsync();
 
