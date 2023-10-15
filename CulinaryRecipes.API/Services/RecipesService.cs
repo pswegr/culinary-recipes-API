@@ -23,10 +23,10 @@ namespace CulinaryRecipes.API.Services
         }
 
         public async Task<List<Recipes>> GetAsync() =>
-                await _recipesCollection.Find(_ => true).ToListAsync();
+                await _recipesCollection.Find(x  => x.isActive).ToListAsync();
 
         public async Task<List<Recipes>> GetPublishedAsync() =>
-               await _recipesCollection.Find(x => x.published).ToListAsync();
+               await _recipesCollection.Find(x => x.published && x.isActive).ToListAsync();
 
         public async Task<Recipes?> GetAsync(string id) =>
             await _recipesCollection.Find(x => x.id == id).FirstOrDefaultAsync();
@@ -35,10 +35,27 @@ namespace CulinaryRecipes.API.Services
         {
             newRecipes.createdAt = DateTime.UtcNow;
             newRecipes.createdBy = "TODO: Admin development";
+            newRecipes.isActive = true;
 
-            newRecipes.photo.url = imageUploadResult.SecureUrl.AbsoluteUri;
-            newRecipes.photo.publicId = imageUploadResult.PublicId;
-            newRecipes.photo.mainColor = imageUploadResult.Colors[0][0];
+            if (imageUploadResult?.SecureUrl?.AbsoluteUri != null)
+            {
+                newRecipes.photo = new Photo
+                {
+                    url = imageUploadResult.SecureUrl.AbsoluteUri,
+                    publicId = imageUploadResult.PublicId,
+                    mainColor = imageUploadResult.Colors[0][0]
+                };
+            }
+            else
+            {
+                newRecipes.photo = new Photo
+                {
+                    url = "",
+                    publicId = "",
+                    mainColor = ""
+                };
+            }
+
             await _recipesCollection.InsertOneAsync(newRecipes); 
         }
 
@@ -46,6 +63,8 @@ namespace CulinaryRecipes.API.Services
         {
             updatedRecipes.updatedAt = DateTime.UtcNow;
             updatedRecipes.updatedBy = "TODO: Admin development";
+            updatedRecipes.isActive = true;
+
             if (imageUploadResult?.SecureUrl?.AbsoluteUri != null)
             {
                 updatedRecipes.photo = new Photo
@@ -59,8 +78,11 @@ namespace CulinaryRecipes.API.Services
             await _recipesCollection.ReplaceOneAsync(x => x.id == id, updatedRecipes);
         }
 
-        public async Task RemoveAsync(string id) =>
-            await _recipesCollection.DeleteOneAsync(x => x.id == id);
+        public async Task RemoveAsync(string id, Recipes recipe )
+        {
+            recipe.isActive = false;
+            await _recipesCollection.ReplaceOneAsync(x => x.id == id, recipe);
+        }
 
         public List<string> GetCategories(string searchText)
         {
