@@ -23,5 +23,6 @@ namespace CulinaryRecipes.API.Models
         public DateTime? updatedAt { get; set; }
         public Photo? photo { get; set; }
         public bool published { get; set; }
+        public bool isActive {  get; set; }
     }
 }

@@ -16,7 +16,7 @@ namespace CulinaryRecipes.API.Services.Interfaces
 
         Task UpdateAsync(string id, Recipes updatedRecipes, ImageUploadResult imageUploadResult);
 
-        Task RemoveAsync(string id);
+        Task RemoveAsync(string id, Recipes recipe);
 
         List<string> GetCategories(string searchText);
         Task<List<string>> GetTags();
