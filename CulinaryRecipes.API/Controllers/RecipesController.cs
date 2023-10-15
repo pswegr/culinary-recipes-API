@@ -102,7 +102,7 @@ namespace CulinaryRecipes.API.Controllers
                 return NotFound();
             }
 
-            await _recipesService.RemoveAsync(id);
+            await _recipesService.RemoveAsync(id, recipes);
 
             return NoContent();
         }
