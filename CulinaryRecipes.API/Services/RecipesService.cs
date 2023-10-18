@@ -25,8 +25,29 @@ namespace CulinaryRecipes.API.Services
         public async Task<List<Recipes>> GetAsync() =>
                 await _recipesCollection.Find(x  => x.isActive).ToListAsync();
 
-        public async Task<List<Recipes>> GetPublishedAsync() =>
-               await _recipesCollection.Find(x => x.published && x.isActive).ToListAsync();
+        public async Task<List<Recipes>> GetPublishedAsync(string[]? tags, string? category)
+        {
+            var filterList = new List<FilterDefinition<Recipes>>();
+
+            if(tags != null && tags.Length > 0)
+            {
+                filterList.Add(Builders<Recipes>.Filter.All(x => x.tags, tags));
+            }
+
+            if (!string.IsNullOrEmpty(category))
+            {
+                filterList.Add(Builders<Recipes>.Filter.Eq(x => x.category, category));
+            }
+
+            filterList.Add(Builders<Recipes>.Filter.Eq(x => x.published, true));
+            filterList.Add(Builders<Recipes>.Filter.Eq(x => x.isActive, true));
+
+
+            var filter = Builders<Recipes>.Filter.And(filterList);
+
+            return await _recipesCollection.Find(filter).ToListAsync();
+        }
+              
 
         public async Task<Recipes?> GetAsync(string id) =>
             await _recipesCollection.Find(x => x.id == id).FirstOrDefaultAsync();
