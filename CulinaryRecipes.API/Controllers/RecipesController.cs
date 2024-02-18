@@ -26,12 +26,12 @@ namespace CulinaryRecipes.API.Controllers
         }
 
         [HttpGet("GetAll")]
-        public async Task<List<Recipes>> Get() =>
-            await _recipesService.GetAsync();
+        public async Task<List<Recipes>> Get([FromQuery] string[]? tags, [FromQuery] string? category) =>
+            await _recipesService.GetAsync(tags: tags, category: category);
 
         [HttpGet]
         public async Task<List<Recipes>> GetPublished([FromQuery] string[]? tags, [FromQuery] string? category) =>
-          await _recipesService.GetPublishedAsync(tags, category);
+          await _recipesService.GetAsync(tags, category, publishedOnly: true);
 
         [HttpGet("{id:length(24)}")]
         public async Task<ActionResult<Recipes>> Get(string id)
@@ -115,6 +115,12 @@ namespace CulinaryRecipes.API.Controllers
 
         [HttpGet("Tags")]
         public async Task<ActionResult<List<string>>> GetTags()
+        {
+            return await _recipesService.GetTags(publishedOnly: true);
+        }
+
+        [HttpGet("AllTags")]
+        public async Task<ActionResult<List<string>>> GetAllTags()
         {
             return await _recipesService.GetTags();
         }

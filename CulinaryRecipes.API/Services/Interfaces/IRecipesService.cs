@@ -6,9 +6,8 @@ namespace CulinaryRecipes.API.Services.Interfaces
 {
     public interface IRecipesService
     {
-        Task<List<Recipes>> GetAsync();
 
-        Task<List<Recipes>> GetPublishedAsync(string[]? tags, string? category);
+        Task<List<Recipes>> GetAsync(string[]? tags = null, string? category = null, bool? publishedOnly = null);
 
         Task<Recipes?> GetAsync(string id);
 
@@ -19,6 +18,6 @@ namespace CulinaryRecipes.API.Services.Interfaces
         Task RemoveAsync(string id, Recipes recipe);
 
         List<string> GetCategories(string searchText);
-        Task<List<string>> GetTags();
+        Task<List<string>> GetTags(bool? publishedOnly = null);
     }
 }

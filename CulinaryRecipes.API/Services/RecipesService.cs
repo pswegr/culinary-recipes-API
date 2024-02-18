@@ -1,4 +1,5 @@
-﻿using CloudinaryDotNet.Actions;
+﻿using Amazon.SecurityToken.Model;
+using CloudinaryDotNet.Actions;
 using CulinaryRecipes.API.Models;
 using CulinaryRecipes.API.Services.Interfaces;
 using Microsoft.Extensions.Options;
@@ -22,10 +23,7 @@ namespace CulinaryRecipes.API.Services
             options.Value.RecipesCollectionName);
         }
 
-        public async Task<List<Recipes>> GetAsync() =>
-                await _recipesCollection.Find(x  => x.isActive).ToListAsync();
-
-        public async Task<List<Recipes>> GetPublishedAsync(string[]? tags, string? category)
+        public async Task<List<Recipes>> GetAsync(string[]? tags = null, string? category = null, bool? publishedOnly = false)
         {
             var filterList = new List<FilterDefinition<Recipes>>();
 
@@ -39,7 +37,11 @@ namespace CulinaryRecipes.API.Services
                 filterList.Add(Builders<Recipes>.Filter.Eq(x => x.category, category));
             }
 
-            filterList.Add(Builders<Recipes>.Filter.Eq(x => x.published, true));
+            if(publishedOnly ?? false)
+            {
+                filterList.Add(Builders<Recipes>.Filter.Eq(x => x.published, true));
+            }
+        
             filterList.Add(Builders<Recipes>.Filter.Eq(x => x.isActive, true));
 
 
@@ -120,12 +122,25 @@ namespace CulinaryRecipes.API.Services
        
         }
 
-        public async Task<List<string>> GetTags()
+        public async Task<List<string>> GetTags(bool? publishedOnly = false)
         {
-            var filter = new BsonDocument();
+            var filterList = new List<FilterDefinition<Recipes>>();
+
+            if(publishedOnly ?? false)
+            {
+                filterList.Add(Builders<Recipes>.Filter.Eq(x => x.published, true));
+            }
+        
+            filterList.Add(Builders<Recipes>.Filter.Eq(x => x.isActive, true));
+
+            var filter = Builders<Recipes>.Filter.And(filterList);
+            if (filter == null)
+            {
+                return new List<string>();
+            }
+
             var tagList = await _recipesCollection.Distinct<string>("tags", filter).ToListAsync();
             return tagList;
         }
-
     }
 }
