@@ -1,7 +1,5 @@
 using CulinaryRecipes.API.Extensions;
 using CulinaryRecipes.API.Models;
-using CulinaryRecipes.API.Services;
-using CulinaryRecipes.API.Services.Interfaces;
 
 var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
 
@@ -31,6 +29,7 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c => c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "CulinaryRecipesAPI", Version = "v1" }));
+builder.Services.AddApplicationIdentityServices(builder.Configuration);
 
 var app = builder.Build();
 
