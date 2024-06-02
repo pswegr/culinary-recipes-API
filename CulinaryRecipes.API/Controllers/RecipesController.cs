@@ -1,13 +1,10 @@
 ﻿using CloudinaryDotNet.Actions;
 using CulinaryRecipes.API.Models;
-using CulinaryRecipes.API.Services;
 using CulinaryRecipes.API.Services.Interfaces;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
-using MongoDB.Bson;
-using MongoDB.Driver;
-using MongoDB.Driver.Core.Operations;
+using System.Security.Claims;
 using System.Text.Json;
 
 namespace CulinaryRecipes.API.Controllers
@@ -26,6 +23,7 @@ namespace CulinaryRecipes.API.Controllers
         }
 
         [HttpGet("GetAll")]
+        [Authorize(Roles = "Admin")]
         public async Task<List<Recipes>> Get([FromQuery] string[]? tags, [FromQuery] string? category) =>
             await _recipesService.GetAsync(tags: tags, category: category);
 
@@ -47,15 +45,18 @@ namespace CulinaryRecipes.API.Controllers
         }
 
         [HttpPost("UpsertWithImage")]
+        [Authorize]
         public async Task<IActionResult> Upsert([FromForm] string recipe, IFormFile? photo)
         {
             try
             {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var isAdmin = User.IsInRole("Admin");
                 Recipes? recipeModel =
                     JsonSerializer.Deserialize<Recipes>(recipe);
                 var photoUploadresult = new ImageUploadResult();
 
-                if(photo != null) 
+                if (photo != null)
                 {
                     photoUploadresult = await _photoService.UploadPhotoAsync(photo);
                 }
@@ -72,14 +73,27 @@ namespace CulinaryRecipes.API.Controllers
                         return NotFound();
                     }
 
-                    await _recipesService.UpdateAsync(recipeModel.id, recipeModel, photoUploadresult);
+                    recipeModel.updatedAt = DateTime.UtcNow;
 
+                    if (recipeFromDb.createdBy == userId)
+                    {
+                        await _recipesService.UpdateAsync(recipeModel.id, recipeModel, photoUploadresult);
+                    }else if ( isAdmin)
+                    {
+                        recipeModel.updatedBy = userId;
+                        await _recipesService.UpdateAsync(recipeModel.id, recipeModel, photoUploadresult);
+                    }
+                    else
+                    {
+                        return Unauthorized();
+                    }
+             
                     return NoContent();
                 }
                 else
                 {
                     recipeModel.createdAt = DateTime.UtcNow;
-                    recipeModel.createdBy = "TODO: Admin development";
+                    recipeModel.createdBy = userId ;
                     await _recipesService.CreateAsync(recipeModel, photoUploadresult);
                     return CreatedAtAction(nameof(Get), new { id = recipeModel.id }, recipeModel);
                 }
@@ -93,6 +107,7 @@ namespace CulinaryRecipes.API.Controllers
         }
 
         [HttpDelete("{id:length(24)}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(string id)
         {
             var recipes = await _recipesService.GetAsync(id);
@@ -120,6 +135,7 @@ namespace CulinaryRecipes.API.Controllers
         }
 
         [HttpGet("AllTags")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<List<string>>> GetAllTags()
         {
             return await _recipesService.GetTags();
