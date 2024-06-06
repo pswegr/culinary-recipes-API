@@ -22,7 +22,7 @@ builder.Services.AddCors(options =>
                           policy =>
                           {
                               policy.WithOrigins("https://black-desert-08e3c1910.3.azurestaticapps.net",
-                                  "https://recipeswithpassion.com")
+                                  "https://recipeswithpassion.com", "https://netreci.com")
                                                   .AllowAnyHeader()
                                                   .AllowAnyMethod();
                           });
@@ -34,6 +34,9 @@ builder.Services.Configure<CulinaryRecipesDatabaseSettings>(
 
 builder.Services.Configure<IdentityDatabaseSettings>(
     builder.Configuration.GetSection("IdentityDatabase"));
+
+builder.Services.Configure<EmailSettings>(
+    builder.Configuration.GetSection("SMTP"));
 
 builder.Services.AddApplicationServices(builder.Configuration);
 

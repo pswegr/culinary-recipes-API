@@ -27,6 +27,11 @@ namespace CulinaryRecipes.API.Controllers
         public async Task<List<Recipes>> Get([FromQuery] string[]? tags, [FromQuery] string? category) =>
             await _recipesService.GetAsync(tags: tags, category: category);
 
+        [HttpGet("GetAllCreatedByUser")]
+        [Authorize]
+        public async Task<List<Recipes>> GetAllCreatedByUser([FromQuery] string[]? tags, [FromQuery] string? category) =>
+            await _recipesService.GetAsync(tags: tags, category: category, userNick: User.FindFirstValue(ClaimTypes.GivenName));
+
         [HttpGet]
         public async Task<List<Recipes>> GetPublished([FromQuery] string[]? tags, [FromQuery] string? category) =>
           await _recipesService.GetAsync(tags, category, publishedOnly: true);
@@ -50,7 +55,7 @@ namespace CulinaryRecipes.API.Controllers
         {
             try
             {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var userNick = User.FindFirstValue(ClaimTypes.GivenName);
                 var isAdmin = User.IsInRole("Admin");
                 Recipes? recipeModel =
                     JsonSerializer.Deserialize<Recipes>(recipe);
@@ -75,12 +80,13 @@ namespace CulinaryRecipes.API.Controllers
 
                     recipeModel.updatedAt = DateTime.UtcNow;
 
-                    if (recipeFromDb.createdBy == userId)
+                    if (recipeFromDb.createdBy == userNick)
                     {
+                        recipeModel.updatedBy = userNick;
                         await _recipesService.UpdateAsync(recipeModel.id, recipeModel, photoUploadresult);
                     }else if ( isAdmin)
                     {
-                        recipeModel.updatedBy = userId;
+                        recipeModel.updatedBy = userNick;
                         await _recipesService.UpdateAsync(recipeModel.id, recipeModel, photoUploadresult);
                     }
                     else
@@ -93,7 +99,7 @@ namespace CulinaryRecipes.API.Controllers
                 else
                 {
                     recipeModel.createdAt = DateTime.UtcNow;
-                    recipeModel.createdBy = userId ;
+                    recipeModel.createdBy = userNick;
                     await _recipesService.CreateAsync(recipeModel, photoUploadresult);
                     return CreatedAtAction(nameof(Get), new { id = recipeModel.id }, recipeModel);
                 }
@@ -139,6 +145,13 @@ namespace CulinaryRecipes.API.Controllers
         public async Task<ActionResult<List<string>>> GetAllTags()
         {
             return await _recipesService.GetTags();
+        }
+
+        [HttpGet("AllTagsCreatedByUser")]
+        [Authorize]
+        public async Task<ActionResult<List<string>>> GetAllTagsCreatedByUser()
+        {
+            return await _recipesService.GetTags(userNick: User.FindFirstValue(ClaimTypes.GivenName));
         }
     }
 }

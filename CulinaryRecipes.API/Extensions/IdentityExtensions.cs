@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -30,6 +31,9 @@ namespace CulinaryRecipes.API.Extensions
                 identityOptions.Password.RequireNonAlphanumeric = true;
                 identityOptions.Password.RequiredLength = 6;
                 identityOptions.User.RequireUniqueEmail = true;
+                identityOptions.Tokens.EmailConfirmationTokenProvider = TokenOptions.DefaultProvider;
+                identityOptions.Tokens.PasswordResetTokenProvider = TokenOptions.DefaultProvider;
+                identityOptions.SignIn.RequireConfirmedAccount = true;
             },
             mongoIdentityOptions =>
             {

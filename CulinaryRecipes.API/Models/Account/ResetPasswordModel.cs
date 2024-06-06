@@ -2,8 +2,11 @@
 
 namespace CulinaryRecipes.API.Models.Account
 {
-    public class RegisterModel
+    public class ResetPasswordModel
     {
+        [Required]
+        public string Token { get; set; }
+
         [Required]
         [EmailAddress]
         public string Email { get; set; }
@@ -11,9 +14,5 @@ namespace CulinaryRecipes.API.Models.Account
         [Required]
         [StringLength(100, MinimumLength = 6)]
         public string Password { get; set; }
-
-        [Required]
-        [RegularExpression("^[a-zA-Z0-9]*$", ErrorMessage = "Nickname must be alphanumeric.")]
-        public string Nick { get; set; }
     }
 }

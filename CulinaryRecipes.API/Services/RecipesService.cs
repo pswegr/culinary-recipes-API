@@ -23,7 +23,7 @@ namespace CulinaryRecipes.API.Services
             options.Value.RecipesCollectionName);
         }
 
-        public async Task<List<Recipes>> GetAsync(string[]? tags = null, string? category = null, bool? publishedOnly = false)
+        public async Task<List<Recipes>> GetAsync(string[]? tags = null, string? category = null, bool? publishedOnly = false, string? userNick = "")
         {
             var filterList = new List<FilterDefinition<Recipes>>();
 
@@ -41,6 +41,10 @@ namespace CulinaryRecipes.API.Services
             {
                 filterList.Add(Builders<Recipes>.Filter.Eq(x => x.published, true));
             }
+
+            if (!string.IsNullOrEmpty(userNick)) {
+                filterList.Add(Builders<Recipes>.Filter.Eq(x => x.createdBy, userNick));
+            }
         
             filterList.Add(Builders<Recipes>.Filter.Eq(x => x.isActive, true));
 
@@ -49,7 +53,6 @@ namespace CulinaryRecipes.API.Services
 
             return await _recipesCollection.Find(filter).ToListAsync();
         }
-              
 
         public async Task<Recipes?> GetAsync(string id) =>
             await _recipesCollection.Find(x => x.id == id).FirstOrDefaultAsync();
@@ -122,13 +125,17 @@ namespace CulinaryRecipes.API.Services
        
         }
 
-        public async Task<List<string>> GetTags(bool? publishedOnly = false)
+        public async Task<List<string>> GetTags(bool? publishedOnly = false, string? userNick = "")
         {
             var filterList = new List<FilterDefinition<Recipes>>();
 
             if(publishedOnly ?? false)
             {
                 filterList.Add(Builders<Recipes>.Filter.Eq(x => x.published, true));
+            }
+
+            if (!string.IsNullOrEmpty(userNick)){
+                filterList.Add(Builders<Recipes>.Filter.Eq(x => x.createdBy, userNick));
             }
         
             filterList.Add(Builders<Recipes>.Filter.Eq(x => x.isActive, true));

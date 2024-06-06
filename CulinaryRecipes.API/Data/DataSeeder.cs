@@ -1,6 +1,7 @@
 ﻿using CulinaryRecipes.API.Data.Interfaces;
 using CulinaryRecipes.API.Models.Identity;
 using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
 
 namespace CulinaryRecipes.API.Data
 {
@@ -34,6 +35,7 @@ namespace CulinaryRecipes.API.Data
         {
             var adminDefaultUser = _configuration.GetSection("AdminUser").Get<AdminUserSettings>();
             var adminUser = await _userManager.FindByEmailAsync(adminDefaultUser.Email);
+          
             if (adminUser == null)
             {
                 adminUser = new ApplicationUser
@@ -46,6 +48,8 @@ namespace CulinaryRecipes.API.Data
 
                 var result = await _userManager.CreateAsync(adminUser, adminDefaultUser.Password);
                 await _userManager.AddToRoleAsync(adminUser, "Admin");
+                await _userManager.AddClaimAsync(adminUser, new Claim(ClaimTypes.GivenName, adminDefaultUser.Nick));
+
                 var token = await _userManager.GenerateEmailConfirmationTokenAsync(adminUser);
                 await _userManager.ConfirmEmailAsync(adminUser, token);
             }
