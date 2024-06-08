@@ -74,7 +74,7 @@ namespace CulinaryRecipes.API.Controllers
 
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
-            var angularConfirmationLink = $"http://localhost:4200/#/account/confirmEmail?email={user.Email}&token={Uri.EscapeDataString(token)}";
+            var angularConfirmationLink = $"https://netreci.com/#/account/confirmEmail?email={user.Email}&token={Uri.EscapeDataString(token)}";
 
             await _emailService.SendEmailAsync(user.Email, "Confirm your email", $"Please confirm your account by clicking <a href=\"{angularConfirmationLink}\">here</a>.");
             return Ok(new { Message = "User registered successfully. Please check your email to confirm your account." });
@@ -132,7 +132,7 @@ namespace CulinaryRecipes.API.Controllers
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
-            var angularResetLink = $"http://localhost:4200/#/account/resetPassword?email={user.Email}&token={Uri.EscapeDataString(token)}";
+            var angularResetLink = $"https://netreci.com/#/account/resetPassword?email={user.Email}&token={Uri.EscapeDataString(token)}";
 
             await _emailService.SendEmailAsync(user.Email, "Reset your password", $"Reset your password by clicking <a href=\"{angularResetLink}\">here</a>.");
 
