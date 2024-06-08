@@ -23,6 +23,10 @@ namespace CulinaryRecipes.API.Extensions
             var dbIdentitySettings = config.GetSection("IdentityDatabase").Get<IdentityDatabaseSettings>();
             var jwtSettings = config.GetSection("Jwt").Get<JwtSettings>();
 
+            if(dbIdentitySettings == null) { 
+                throw new Exception("dbIdentitySettings is null");
+            }
+
             services.AddIdentityMongoDbProvider<ApplicationUser, ApplicationRole>(identityOptions =>
             {
                 identityOptions.Password.RequireDigit = true;
