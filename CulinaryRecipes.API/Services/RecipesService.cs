@@ -1,9 +1,7 @@
-﻿using Amazon.SecurityToken.Model;
-using CloudinaryDotNet.Actions;
+﻿using CloudinaryDotNet.Actions;
 using CulinaryRecipes.API.Models;
 using CulinaryRecipes.API.Services.Interfaces;
 using Microsoft.Extensions.Options;
-using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace CulinaryRecipes.API.Services
@@ -23,7 +21,7 @@ namespace CulinaryRecipes.API.Services
             options.Value.RecipesCollectionName);
         }
 
-        public async Task<List<Recipes>> GetAsync(string[]? tags = null, string? category = null, bool? publishedOnly = false)
+        public async Task<List<Recipes>> GetAsync(string[]? tags = null, string? category = null, bool? publishedOnly = false, string? userNick = "")
         {
             var filterList = new List<FilterDefinition<Recipes>>();
 
@@ -41,6 +39,10 @@ namespace CulinaryRecipes.API.Services
             {
                 filterList.Add(Builders<Recipes>.Filter.Eq(x => x.published, true));
             }
+
+            if (!string.IsNullOrEmpty(userNick)) {
+                filterList.Add(Builders<Recipes>.Filter.Eq(x => x.createdBy, userNick));
+            }
         
             filterList.Add(Builders<Recipes>.Filter.Eq(x => x.isActive, true));
 
@@ -49,15 +51,14 @@ namespace CulinaryRecipes.API.Services
 
             return await _recipesCollection.Find(filter).ToListAsync();
         }
-              
 
         public async Task<Recipes?> GetAsync(string id) =>
             await _recipesCollection.Find(x => x.id == id).FirstOrDefaultAsync();
 
-        public async Task CreateAsync(Recipes newRecipes, ImageUploadResult imageUploadResult) 
+        public async Task CreateAsync(Recipes newRecipes, ImageUploadResult imageUploadResult, string userNick) 
         {
             newRecipes.createdAt = DateTime.UtcNow;
-            newRecipes.createdBy = "TODO: Admin development";
+            newRecipes.createdBy = userNick;
             newRecipes.isActive = true;
 
             if (imageUploadResult?.SecureUrl?.AbsoluteUri != null)
@@ -82,10 +83,10 @@ namespace CulinaryRecipes.API.Services
             await _recipesCollection.InsertOneAsync(newRecipes); 
         }
 
-        public async Task UpdateAsync(string id, Recipes updatedRecipes, ImageUploadResult imageUploadResult)
+        public async Task UpdateAsync(string id, Recipes updatedRecipes, ImageUploadResult imageUploadResult, string nick)
         {
             updatedRecipes.updatedAt = DateTime.UtcNow;
-            updatedRecipes.updatedBy = "TODO: Admin development";
+            updatedRecipes.updatedBy = nick;
             updatedRecipes.isActive = true;
 
             if (imageUploadResult?.SecureUrl?.AbsoluteUri != null)
@@ -122,13 +123,17 @@ namespace CulinaryRecipes.API.Services
        
         }
 
-        public async Task<List<string>> GetTags(bool? publishedOnly = false)
+        public async Task<List<string>> GetTags(bool? publishedOnly = false, string? userNick = "")
         {
             var filterList = new List<FilterDefinition<Recipes>>();
 
             if(publishedOnly ?? false)
             {
                 filterList.Add(Builders<Recipes>.Filter.Eq(x => x.published, true));
+            }
+
+            if (!string.IsNullOrEmpty(userNick)){
+                filterList.Add(Builders<Recipes>.Filter.Eq(x => x.createdBy, userNick));
             }
         
             filterList.Add(Builders<Recipes>.Filter.Eq(x => x.isActive, true));
@@ -141,6 +146,29 @@ namespace CulinaryRecipes.API.Services
 
             var tagList = await _recipesCollection.Distinct<string>("tags", filter).ToListAsync();
             return tagList;
+        }
+
+        public async Task LikeRecipeToggleAsync(string recipeId, string userId)
+        {
+            var recipe = await _recipesCollection.FindAsync(x => x.id == recipeId);
+
+            if(recipe == null)
+            {
+                return;
+            }
+
+            if (recipe.FirstOrDefault().LikedByUsers.Contains(userId))
+            {
+                var filter = Builders<Recipes>.Filter.Eq(r => r.id, recipeId);
+                var update = Builders<Recipes>.Update.Pull(r => r.LikedByUsers, userId);
+                await _recipesCollection.UpdateOneAsync(filter, update);
+            }
+            else
+            {
+                var filter = Builders<Recipes>.Filter.Eq(r => r.id, recipeId);
+                var update = Builders<Recipes>.Update.AddToSet(r => r.LikedByUsers, userId);
+                await _recipesCollection.UpdateOneAsync(filter, update);
+            }
         }
     }
 }
