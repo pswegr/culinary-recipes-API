@@ -73,6 +73,7 @@ namespace CulinaryRecipes.API.Controllers
             await _userManager.AddClaimAsync(user, new Claim(ClaimTypes.GivenName, user.Nick));
 
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
             var angularConfirmationLink = $"http://localhost:4200/#/account/confirmEmail?email={user.Email}&token={Uri.EscapeDataString(token)}";
 
             await _emailService.SendEmailAsync(user.Email, "Confirm your email", $"Please confirm your account by clicking <a href=\"{angularConfirmationLink}\">here</a>.");
@@ -98,7 +99,8 @@ namespace CulinaryRecipes.API.Controllers
             {
                 Token = token,
                 Email = user.Email,
-                Nick = user.Nick
+                Nick = user.Nick,
+                UserId = user.Id.ToString()
             };
 
             return Ok(loginResponse);
@@ -129,7 +131,7 @@ namespace CulinaryRecipes.API.Controllers
             }
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            //var resetLink = Url.Action("ResetPassword", "Account", new { token, email = user.Email }, Request.Scheme);
+
             var angularResetLink = $"http://localhost:4200/#/account/resetPassword?email={user.Email}&token={Uri.EscapeDataString(token)}";
 
             await _emailService.SendEmailAsync(user.Email, "Reset your password", $"Reset your password by clicking <a href=\"{angularResetLink}\">here</a>.");

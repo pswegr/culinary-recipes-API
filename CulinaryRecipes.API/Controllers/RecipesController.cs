@@ -2,7 +2,6 @@
 using CulinaryRecipes.API.Models;
 using CulinaryRecipes.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using System.Text.Json;
@@ -69,7 +68,7 @@ namespace CulinaryRecipes.API.Controllers
                 if (recipeModel is null)
                     return BadRequest();
 
-                if (!string.IsNullOrEmpty(recipeModel.id))
+                if (recipeModel.id != null)
                 {
                     var recipeFromDb = await _recipesService.GetAsync(recipeModel.id);
 
@@ -83,11 +82,11 @@ namespace CulinaryRecipes.API.Controllers
                     if (recipeFromDb.createdBy == userNick)
                     {
                         recipeModel.updatedBy = userNick;
-                        await _recipesService.UpdateAsync(recipeModel.id, recipeModel, photoUploadresult);
+                        await _recipesService.UpdateAsync(recipeModel.id, recipeModel, photoUploadresult, userNick);
                     }else if ( isAdmin)
                     {
                         recipeModel.updatedBy = userNick;
-                        await _recipesService.UpdateAsync(recipeModel.id, recipeModel, photoUploadresult);
+                        await _recipesService.UpdateAsync(recipeModel.id, recipeModel, photoUploadresult, userNick);
                     }
                     else
                     {
@@ -100,7 +99,7 @@ namespace CulinaryRecipes.API.Controllers
                 {
                     recipeModel.createdAt = DateTime.UtcNow;
                     recipeModel.createdBy = userNick;
-                    await _recipesService.CreateAsync(recipeModel, photoUploadresult);
+                    await _recipesService.CreateAsync(recipeModel, photoUploadresult, userNick);
                     return CreatedAtAction(nameof(Get), new { id = recipeModel.id }, recipeModel);
                 }
             }
@@ -152,6 +151,19 @@ namespace CulinaryRecipes.API.Controllers
         public async Task<ActionResult<List<string>>> GetAllTagsCreatedByUser()
         {
             return await _recipesService.GetTags(userNick: User.FindFirstValue(ClaimTypes.GivenName));
+        }
+
+        [HttpPost("{id}/likeToggle")]
+        [Authorize]
+        public async Task<IActionResult> LikeRecipeToggle(string id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if(userId == null)
+            {
+                return BadRequest();
+            }
+            await _recipesService.LikeRecipeToggleAsync(id, userId);
+            return Ok();
         }
     }
 }
