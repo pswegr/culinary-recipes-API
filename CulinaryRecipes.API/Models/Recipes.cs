@@ -24,5 +24,6 @@ namespace CulinaryRecipes.API.Models
         public Photo? photo { get; set; }
         public bool published { get; set; }
         public bool isActive {  get; set; }
+        public List<string> LikedByUsers { get; set; } = new List<string>();
     }
 }
