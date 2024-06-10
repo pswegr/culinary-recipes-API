@@ -45,6 +45,10 @@ jobs:
       working-directory: ${{ env.WORKING_DIRECTORY }}
     - name: Generate Open API Specification Document
       run: swagger tofile --output "${{ env.API_IMPORT_SPECIFICATION_PATH }}" "${{ env.API_IMPORT_DLL }}" "${{ env.API_IMPORT_VERSION }}"
+      env:
+        IdentityDatabase__ConnectionString: ${{ secrets.IdentityDatabase__ConnectionString }}
+        IdentityDatabase__UsersCollectionName: ${{ secrets.IdentityDatabase__UsersCollectionName }}
+        IdentityDatabase__RolesCollectionName: ${{ secrets.IdentityDatabase__RolesCollectionName }}
     - name: Publish Artifacts
       uses: actions/upload-artifact@v4
       with:
