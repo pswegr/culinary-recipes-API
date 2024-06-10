@@ -46,9 +46,9 @@ jobs:
     - name: Generate Open API Specification Document
       run: swagger tofile --output "${{ env.API_IMPORT_SPECIFICATION_PATH }}" "${{ env.API_IMPORT_DLL }}" "${{ env.API_IMPORT_VERSION }}"
       env:
-        IdentityDatabase__ConnectionString: ${{ secrets.IdentityDatabase__ConnectionString }}
-        IdentityDatabase__UsersCollectionName: ${{ secrets.IdentityDatabase__UsersCollectionName }}
-        IdentityDatabase__RolesCollectionName: ${{ secrets.IdentityDatabase__RolesCollectionName }}
+        IdentityDatabase__ConnectionString: ${{ secrets.IDENTITYDATABASE__CONNECTIONSTRING }}
+        IdentityDatabase__UsersCollectionName: ${{ secrets.IDENTITYDATABASE__USERSCOLLECTIONNAME }}
+        IdentityDatabase__RolesCollectionName: ${{ secrets.IDENTITYDATABASE__ROLESCOLLECTIONNAME }}
     - name: Publish Artifacts
       uses: actions/upload-artifact@v4
       with:
