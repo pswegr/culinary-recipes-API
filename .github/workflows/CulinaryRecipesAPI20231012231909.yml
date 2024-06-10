@@ -50,6 +50,10 @@ jobs:
         IdentityDatabase__ConnectionString: ${{ secrets.IDENTITYDATABASE__CONNECTIONSTRING }}
         IdentityDatabase__UsersCollectionName: ${{ secrets.IDENTITYDATABASE__USERSCOLLECTIONNAME }}
         IdentityDatabase__RolesCollectionName: ${{ secrets.IDENTITYDATABASE__ROLESCOLLECTIONNAME }}
+        AdminUser__Email: ${{ secrets.ADMINUSER__EMAIL }}
+        AdminUser__Password: ${{ secrets.ADMINUSER__PASSWORD }}
+        AdminUser__Nick: ${{ secrets.ADMINUSER__NICK }}
+        AdminUser__SecurityStamp: ${{ secrets.ADMINUSER__SECURITYSTAMP }}
     - name: Publish Artifacts
       uses: actions/upload-artifact@v4
       with:
