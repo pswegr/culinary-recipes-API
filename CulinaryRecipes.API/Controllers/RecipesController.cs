@@ -76,7 +76,7 @@ namespace CulinaryRecipes.API.Controllers
                     {
                         return NotFound();
                     }
-
+                    recipeModel.LikedByUsers = recipeFromDb.LikedByUsers;
                     recipeModel.updatedAt = DateTime.UtcNow;
 
                     if (recipeFromDb.createdBy == userNick)
