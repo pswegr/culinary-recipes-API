@@ -5,7 +5,7 @@ namespace CulinaryRecipes.API.Services.Interfaces
 {
     public interface IRecipesService
     {
-        Task<List<Recipes>> GetAsync(string[]? tags = null, string? category = null, bool? publishedOnly = null, string? userNick = "");
+        Task<List<Recipes>> GetAsync(string[]? tags = null, string? category = null, bool? publishedOnly = null, string? userNick = "", string? content = "");
 
         Task<Recipes?> GetAsync(string id);
 
