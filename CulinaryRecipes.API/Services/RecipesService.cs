@@ -2,6 +2,7 @@
 using CulinaryRecipes.API.Models;
 using CulinaryRecipes.API.Services.Interfaces;
 using Microsoft.Extensions.Options;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace CulinaryRecipes.API.Services
@@ -21,7 +22,7 @@ namespace CulinaryRecipes.API.Services
             options.Value.RecipesCollectionName);
         }
 
-        public async Task<List<Recipes>> GetAsync(string[]? tags = null, string? category = null, bool? publishedOnly = false, string? userNick = "")
+        public async Task<List<Recipes>> GetAsync(string[]? tags = null, string? category = null, bool? publishedOnly = false, string? userNick = "", string? content = "")
         {
             var filterList = new List<FilterDefinition<Recipes>>();
 
@@ -40,10 +41,24 @@ namespace CulinaryRecipes.API.Services
                 filterList.Add(Builders<Recipes>.Filter.Eq(x => x.published, true));
             }
 
-            if (!string.IsNullOrEmpty(userNick)) {
+            if (!string.IsNullOrEmpty(userNick)) 
+            {
                 filterList.Add(Builders<Recipes>.Filter.Eq(x => x.createdBy, userNick));
             }
-        
+
+            if (!string.IsNullOrEmpty(content))
+            {
+                var regex = new BsonRegularExpression(content, "i");
+                filterList.Add(Builders<Recipes>.Filter.Regex("title", regex) |
+                          Builders<Recipes>.Filter.Regex("description", regex) |
+                          Builders<Recipes>.Filter.Regex("createdBy", regex) |
+                          Builders<Recipes>.Filter.Regex("category", regex) |
+                          Builders<Recipes>.Filter.Regex("instructions", regex) |
+                          Builders<Recipes>.Filter.Regex("tags", regex) |                         
+                          Builders<Recipes>.Filter.ElemMatch(r => r.ingredients, Builders<Ingredient>.Filter.Regex("name", regex)) |
+                          Builders<Recipes>.Filter.ElemMatch(r => r.ingredients, Builders<Ingredient>.Filter.Regex("quantity", regex)));
+            }
+
             filterList.Add(Builders<Recipes>.Filter.Eq(x => x.isActive, true));
 
 

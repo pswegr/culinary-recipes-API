@@ -23,8 +23,8 @@ namespace CulinaryRecipes.API.Controllers
 
         [HttpGet("GetAll")]
         [Authorize(Roles = "Admin")]
-        public async Task<List<Recipes>> Get([FromQuery] string[]? tags, [FromQuery] string? category) =>
-            await _recipesService.GetAsync(tags: tags, category: category);
+        public async Task<List<Recipes>> Get([FromQuery] string[]? tags, [FromQuery] string? category, [FromQuery] string? content) =>
+            await _recipesService.GetAsync(tags: tags, category: category, content: content);
 
         [HttpGet("GetAllCreatedByUser")]
         [Authorize]
@@ -32,8 +32,8 @@ namespace CulinaryRecipes.API.Controllers
             await _recipesService.GetAsync(tags: tags, category: category, userNick: User.FindFirstValue(ClaimTypes.GivenName));
 
         [HttpGet]
-        public async Task<List<Recipes>> GetPublished([FromQuery] string[]? tags, [FromQuery] string? category) =>
-          await _recipesService.GetAsync(tags, category, publishedOnly: true);
+        public async Task<List<Recipes>> GetPublished([FromQuery] string[]? tags, [FromQuery] string? category, [FromQuery] string? content) =>
+          await _recipesService.GetAsync(tags, category, publishedOnly: true, content: content);
 
         [HttpGet("{id:length(24)}")]
         public async Task<ActionResult<Recipes>> Get(string id)
