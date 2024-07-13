@@ -31,6 +31,11 @@ namespace CulinaryRecipes.API.Controllers
         public async Task<List<Recipes>> GetAllCreatedByUser([FromQuery] string[]? tags, [FromQuery] string? category) =>
             await _recipesService.GetAsync(tags: tags, category: category, userNick: User.FindFirstValue(ClaimTypes.GivenName));
 
+        [HttpGet("GetFavorites")]
+        [Authorize]
+        public async Task<List<Recipes>> GetFavorites([FromQuery] string[]? tags, [FromQuery] string? category, [FromQuery] string? content) =>
+          await _recipesService.GetFavoritesAsync(User.FindFirstValue(ClaimTypes.NameIdentifier), tags, category, publishedOnly: true, content: content);
+
         [HttpGet]
         public async Task<List<Recipes>> GetPublished([FromQuery] string[]? tags, [FromQuery] string? category, [FromQuery] string? content) =>
           await _recipesService.GetAsync(tags, category, publishedOnly: true, content: content);
@@ -151,6 +156,13 @@ namespace CulinaryRecipes.API.Controllers
         public async Task<ActionResult<List<string>>> GetAllTagsCreatedByUser()
         {
             return await _recipesService.GetTags(userNick: User.FindFirstValue(ClaimTypes.GivenName));
+        }
+
+        [HttpGet("FavoritesTags")]
+        [Authorize]
+        public async Task<ActionResult<List<string>>> GetFavoritesTags()
+        {
+            return await _recipesService.GetFavoritesTags(userId: User.FindFirstValue(ClaimTypes.NameIdentifier), publishedOnly: true);
         }
 
         [HttpPost("{id}/likeToggle")]
