@@ -163,6 +163,33 @@ namespace CulinaryRecipes.API.Services
             return tagList;
         }
 
+        public async Task<List<string>> GetFavoritesTags(string? userId, bool? publishedOnly = false)
+        {
+            var filterList = new List<FilterDefinition<Recipes>>();
+
+            if (publishedOnly ?? false)
+            {
+                filterList.Add(Builders<Recipes>.Filter.Eq(x => x.published, true));
+            }
+
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var regex = new BsonRegularExpression(userId, "i");
+                filterList.Add(Builders<Recipes>.Filter.Regex(x => x.LikedByUsers, regex));
+            }
+
+            filterList.Add(Builders<Recipes>.Filter.Eq(x => x.isActive, true));
+
+            var filter = Builders<Recipes>.Filter.And(filterList);
+            if (filter == null)
+            {
+                return new List<string>();
+            }
+
+            var tagList = await _recipesCollection.Distinct<string>("tags", filter).ToListAsync();
+            return tagList;
+        }
+
         public async Task LikeRecipeToggleAsync(string recipeId, string userId)
         {
             var recipe = await _recipesCollection.FindAsync(x => x.id == recipeId);
@@ -184,6 +211,53 @@ namespace CulinaryRecipes.API.Services
                 var update = Builders<Recipes>.Update.AddToSet(r => r.LikedByUsers, userId);
                 await _recipesCollection.UpdateOneAsync(filter, update);
             }
+        }
+
+        public async Task<List<Recipes>> GetFavoritesAsync(string userId, string[]? tags = null, string? category = null, bool? publishedOnly = null, string? content = "")
+        {
+            var filterList = new List<FilterDefinition<Recipes>>();
+
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var regex = new BsonRegularExpression(userId, "i");
+                filterList.Add(Builders<Recipes>.Filter.Regex(x => x.LikedByUsers, regex));
+            }
+
+            if (tags != null && tags.Length > 0)
+            {
+                filterList.Add(Builders<Recipes>.Filter.All(x => x.tags, tags));
+            }
+
+            if (!string.IsNullOrEmpty(category))
+            {
+                filterList.Add(Builders<Recipes>.Filter.Eq(x => x.category, category));
+            }
+
+            if (publishedOnly ?? false)
+            {
+                filterList.Add(Builders<Recipes>.Filter.Eq(x => x.published, true));
+            }
+
+
+            if (!string.IsNullOrEmpty(content))
+            {
+                var regex = new BsonRegularExpression(content, "i");
+                filterList.Add(Builders<Recipes>.Filter.Regex("title", regex) |
+                          Builders<Recipes>.Filter.Regex("description", regex) |
+                          Builders<Recipes>.Filter.Regex("createdBy", regex) |
+                          Builders<Recipes>.Filter.Regex("category", regex) |
+                          Builders<Recipes>.Filter.Regex("instructions", regex) |
+                          Builders<Recipes>.Filter.Regex("tags", regex) |
+                          Builders<Recipes>.Filter.ElemMatch(r => r.ingredients, Builders<Ingredient>.Filter.Regex("name", regex)) |
+                          Builders<Recipes>.Filter.ElemMatch(r => r.ingredients, Builders<Ingredient>.Filter.Regex("quantity", regex)));
+            }
+
+            filterList.Add(Builders<Recipes>.Filter.Eq(x => x.isActive, true));
+
+
+            var filter = Builders<Recipes>.Filter.And(filterList);
+
+            return await _recipesCollection.Find(filter).ToListAsync();
         }
     }
 }
