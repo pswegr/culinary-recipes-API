@@ -73,7 +73,7 @@ namespace CulinaryRecipes.API.Controllers
                 if (recipeModel is null)
                     return BadRequest();
 
-                if (recipeModel.id != null)
+                if (!string.IsNullOrEmpty(recipeModel.id))
                 {
                     var recipeFromDb = await _recipesService.GetAsync(recipeModel.id);
 
