@@ -21,7 +21,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy(MyAllowSpecificOrigins,
                           policy =>
                           {
-                              policy.WithOrigins("https://black-desert-08e3c1910.3.azurestaticapps.net",
+                              policy.WithOrigins("https://agreeable-river-0f3a70903.5.azurestaticapps.net",
                                   "https://recipeswithpassion.com", "https://netreci.com")
                                                   .AllowAnyHeader()
                                                   .AllowAnyMethod();
