@@ -144,6 +144,13 @@ namespace CulinaryRecipes.API.Controllers
             return await _recipesService.GetTags(publishedOnly: true);
         }
 
+        [HttpGet("TagsForNewRecipe")]
+        [Authorize]
+        public async Task<ActionResult<List<string>>> GetTagsNewRecipe()
+        {
+            return await _recipesService.GetTags(publishedOnly: true);
+        }
+
         [HttpGet("AllTags")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<List<string>>> GetAllTags()
