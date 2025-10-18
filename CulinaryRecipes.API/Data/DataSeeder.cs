@@ -3,56 +3,55 @@ using CulinaryRecipes.API.Models.Identity;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 
-namespace CulinaryRecipes.API.Data
+namespace CulinaryRecipes.API.Data;
+
+public class DataSeeder : IDataSeeder
 {
-    public class DataSeeder : IDataSeeder
+    private readonly RoleManager<ApplicationRole> _roleManager;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IConfiguration _configuration;
+
+    public DataSeeder(RoleManager<ApplicationRole> roleManager, UserManager<ApplicationUser> userManager, IConfiguration configuration)
     {
-        private readonly RoleManager<ApplicationRole> _roleManager;
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IConfiguration _configuration;
+        _roleManager = roleManager;
+        _userManager = userManager;
+        _configuration = configuration;
+    }
 
-        public DataSeeder(RoleManager<ApplicationRole> roleManager, UserManager<ApplicationUser> userManager, IConfiguration configuration)
+    public async Task SeedRolesAsync()
+    {
+        if (!await _roleManager.RoleExistsAsync("Admin"))
         {
-            _roleManager = roleManager;
-            _userManager = userManager;
-            _configuration = configuration;
+            await _roleManager.CreateAsync(new ApplicationRole { Name = "Admin" });
         }
 
-        public async Task SeedRolesAsync()
+        if (!await _roleManager.RoleExistsAsync("User"))
         {
-            if (!await _roleManager.RoleExistsAsync("Admin"))
-            {
-                await _roleManager.CreateAsync(new ApplicationRole { Name = "Admin" });
-            }
-
-            if (!await _roleManager.RoleExistsAsync("User"))
-            {
-                await _roleManager.CreateAsync(new ApplicationRole { Name = "User" });
-            }
+            await _roleManager.CreateAsync(new ApplicationRole { Name = "User" });
         }
+    }
 
-        public async Task SeedAdminUserAsync()
+    public async Task SeedAdminUserAsync()
+    {
+        var adminDefaultUser = _configuration.GetSection("AdminUser").Get<AdminUserSettings>();
+        var adminUser = await _userManager.FindByEmailAsync(adminDefaultUser.Email);
+      
+        if (adminUser == null)
         {
-            var adminDefaultUser = _configuration.GetSection("AdminUser").Get<AdminUserSettings>();
-            var adminUser = await _userManager.FindByEmailAsync(adminDefaultUser.Email);
-          
-            if (adminUser == null)
+            adminUser = new ApplicationUser
             {
-                adminUser = new ApplicationUser
-                {
-                    UserName = adminDefaultUser.Email,
-                    Email = adminDefaultUser.Email,
-                    SecurityStamp = adminDefaultUser.SecurityStamp,
-                    Nick = adminDefaultUser.Nick
-                };
+                UserName = adminDefaultUser.Email,
+                Email = adminDefaultUser.Email,
+                SecurityStamp = adminDefaultUser.SecurityStamp,
+                Nick = adminDefaultUser.Nick
+            };
 
-                var result = await _userManager.CreateAsync(adminUser, adminDefaultUser.Password);
-                await _userManager.AddToRoleAsync(adminUser, "Admin");
-                await _userManager.AddClaimAsync(adminUser, new Claim(ClaimTypes.GivenName, adminDefaultUser.Nick));
+            var result = await _userManager.CreateAsync(adminUser, adminDefaultUser.Password);
+            await _userManager.AddToRoleAsync(adminUser, "Admin");
+            await _userManager.AddClaimAsync(adminUser, new Claim(ClaimTypes.GivenName, adminDefaultUser.Nick));
 
-                var token = await _userManager.GenerateEmailConfirmationTokenAsync(adminUser);
-                await _userManager.ConfirmEmailAsync(adminUser, token);
-            }
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(adminUser);
+            await _userManager.ConfirmEmailAsync(adminUser, token);
         }
     }
 }

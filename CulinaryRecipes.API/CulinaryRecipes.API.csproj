@@ -13,6 +13,7 @@
     <PackageReference Include="CloudinaryDotNet" Version="1.26.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.4" />
     <PackageReference Include="MongoDB.Driver" Version="2.24.0" />
+    <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
   </ItemGroup>
 

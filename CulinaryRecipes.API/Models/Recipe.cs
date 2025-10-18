@@ -2,7 +2,7 @@
 
 namespace CulinaryRecipes.API.Models
 {
-    public class Recipes
+    public class Recipe
     {
         [BsonId]
         [BsonRepresentation(MongoDB.Bson.BsonType.ObjectId)]

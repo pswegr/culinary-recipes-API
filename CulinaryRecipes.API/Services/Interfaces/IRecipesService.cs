@@ -5,17 +5,17 @@ namespace CulinaryRecipes.API.Services.Interfaces
 {
     public interface IRecipesService
     {
-        Task<List<Recipes>> GetAsync(string[]? tags = null, string? category = null, bool? publishedOnly = null, string? userNick = "", string? content = "");
+        Task<List<Recipe>> GetAsync(string[]? tags = null, string? category = null, bool? publishedOnly = null, string? userNick = "", string? content = "");
 
-        Task<List<Recipes>> GetFavoritesAsync(string userId, string[]? tags = null, string? category = null, bool? publishedOnly = null, string? content = "");
+        Task<List<Recipe>> GetFavoritesAsync(string userId, string[]? tags = null, string? category = null, bool? publishedOnly = null, string? content = "");
 
-        Task<Recipes?> GetAsync(string id);
+        Task<Recipe?> GetAsync(string id);
 
-        Task CreateAsync(Recipes newRecipes, ImageUploadResult imageUploadResult, string userNick);
+        Task CreateAsync(Recipe newRecipes, ImageUploadResult imageUploadResult, string userNick);
 
-        Task UpdateAsync(string id, Recipes updatedRecipes, ImageUploadResult imageUploadResult, string nick);
+        Task UpdateAsync(string id, Recipe updatedRecipes, ImageUploadResult imageUploadResult, string nick);
 
-        Task RemoveAsync(string id, Recipes recipe);
+        Task RemoveAsync(string id, Recipe recipe);
 
         List<string> GetCategories(string searchText);
 
