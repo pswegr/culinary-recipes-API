@@ -22,7 +22,7 @@ builder.Services.AddCors(options =>
                           policy =>
                           {
                               policy.WithOrigins("https://agreeable-river-0f3a70903.5.azurestaticapps.net",
-                                  "https://recipeswithpassion.com", "https://netreci.com", "http://localhost:4200")
+                                  "https://recipeswithpassion.com", "https://netreci.com")
                                                   .AllowAnyHeader()
                                                   .AllowAnyMethod();
                           });
