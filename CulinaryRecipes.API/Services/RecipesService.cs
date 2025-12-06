@@ -122,20 +122,18 @@ namespace CulinaryRecipes.API.Services
             recipe.isActive = false;
             await _recipesCollection.ReplaceOneAsync(x => x.id == id, recipe);
         }
-
         public List<string> GetCategories(string searchText)
         {
             var categories = new List<string>();
             if(!string.IsNullOrEmpty(searchText))
             {
-                categories = _recipesCollection.AsQueryable().Where(x => x.category == searchText).Select(x => x.category).Distinct().ToList();
+                categories = _recipesCollection.AsQueryable().Where(x => x.category == searchText).Select(x => x.category).Distinct().Where(x => !string.IsNullOrEmpty(x)).ToList();
             }
             else
             {
-                categories = _recipesCollection.AsQueryable().Select(x => x.category).Distinct().ToList();
+                categories = _recipesCollection.AsQueryable().Select(x => x.category).Distinct().Where(x => !string.IsNullOrEmpty(x)).ToList();
             }
             return categories;
-       
         }
 
         public async Task<List<string>> GetTags(bool? publishedOnly = false, string? userNick = "")
