@@ -10,40 +10,31 @@ namespace CulinaryRecipes.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class RecipesController : ControllerBase
+    public class RecipesController(IRecipesService recipesService, IPhotoService photoService) : ControllerBase
     {
-        private readonly IRecipesService _recipesService;
-        private readonly IPhotoService _photoService;
-
-        public RecipesController(IRecipesService recipesService, IPhotoService photoService)
-        {
-            _photoService = photoService;
-            _recipesService = recipesService;
-        }
-
         [HttpGet("GetAll")]
         [Authorize(Roles = "Admin")]
         public async Task<List<Recipes>> Get([FromQuery] string[]? tags, [FromQuery] string? category, [FromQuery] string? content) =>
-            await _recipesService.GetAsync(tags: tags, category: category, content: content);
+            await recipesService.GetAsync(tags: tags, category: category, content: content);
 
         [HttpGet("GetAllCreatedByUser")]
         [Authorize]
-        public async Task<List<Recipes>> GetAllCreatedByUser([FromQuery] string[]? tags, [FromQuery] string? category) =>
-            await _recipesService.GetAsync(tags: tags, category: category, userNick: User.FindFirstValue(ClaimTypes.GivenName));
+        public async Task<List<Recipes>> GetAllCreatedByUser([FromQuery] string[]? tags, [FromQuery] string? category,  [FromQuery] string? content) =>
+            await recipesService.GetAsync(tags: tags, category: category, userNick: User.FindFirstValue(ClaimTypes.GivenName), content: content);
 
         [HttpGet("GetFavorites")]
         [Authorize]
         public async Task<List<Recipes>> GetFavorites([FromQuery] string[]? tags, [FromQuery] string? category, [FromQuery] string? content) =>
-          await _recipesService.GetFavoritesAsync(User.FindFirstValue(ClaimTypes.NameIdentifier), tags, category, publishedOnly: true, content: content);
+          await recipesService.GetFavoritesAsync(User.FindFirstValue(ClaimTypes.NameIdentifier), tags, category, publishedOnly: true, content: content);
 
         [HttpGet]
         public async Task<List<Recipes>> GetPublished([FromQuery] string[]? tags, [FromQuery] string? category, [FromQuery] string? content) =>
-          await _recipesService.GetAsync(tags, category, publishedOnly: true, content: content);
+          await recipesService.GetAsync(tags, category, publishedOnly: true, content: content);
 
         [HttpGet("{id:length(24)}")]
         public async Task<ActionResult<Recipes>> Get(string id)
         {
-            var recipes = await _recipesService.GetAsync(id);
+            var recipes = await recipesService.GetAsync(id);
 
             if (recipes is null)
             {
@@ -67,7 +58,7 @@ namespace CulinaryRecipes.API.Controllers
 
                 if (photo != null)
                 {
-                    photoUploadresult = await _photoService.UploadPhotoAsync(photo);
+                    photoUploadresult = await photoService.UploadPhotoAsync(photo);
                 }
 
                 if (recipeModel is null)
@@ -75,7 +66,7 @@ namespace CulinaryRecipes.API.Controllers
 
                 if (!string.IsNullOrEmpty(recipeModel.id))
                 {
-                    var recipeFromDb = await _recipesService.GetAsync(recipeModel.id);
+                    var recipeFromDb = await recipesService.GetAsync(recipeModel.id);
 
                     if (recipeFromDb is null)
                     {
@@ -87,11 +78,11 @@ namespace CulinaryRecipes.API.Controllers
                     if (recipeFromDb.createdBy == userNick)
                     {
                         recipeModel.updatedBy = userNick;
-                        await _recipesService.UpdateAsync(recipeModel.id, recipeModel, photoUploadresult, userNick);
+                        await recipesService.UpdateAsync(recipeModel.id, recipeModel, photoUploadresult, userNick);
                     }else if ( isAdmin)
                     {
                         recipeModel.updatedBy = userNick;
-                        await _recipesService.UpdateAsync(recipeModel.id, recipeModel, photoUploadresult, userNick);
+                        await recipesService.UpdateAsync(recipeModel.id, recipeModel, photoUploadresult, userNick);
                     }
                     else
                     {
@@ -104,7 +95,7 @@ namespace CulinaryRecipes.API.Controllers
                 {
                     recipeModel.createdAt = DateTime.UtcNow;
                     recipeModel.createdBy = userNick;
-                    await _recipesService.CreateAsync(recipeModel, photoUploadresult, userNick);
+                    await recipesService.CreateAsync(recipeModel, photoUploadresult, userNick);
                     return CreatedAtAction(nameof(Get), new { id = recipeModel.id }, recipeModel);
                 }
             }
@@ -120,14 +111,14 @@ namespace CulinaryRecipes.API.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(string id)
         {
-            var recipes = await _recipesService.GetAsync(id);
+            var recipes = await recipesService.GetAsync(id);
 
             if (recipes is null)
             {
                 return NotFound();
             }
 
-            await _recipesService.RemoveAsync(id, recipes);
+            await recipesService.RemoveAsync(id, recipes);
 
             return NoContent();
         }
@@ -135,41 +126,41 @@ namespace CulinaryRecipes.API.Controllers
         [HttpGet("Categories")]
         public ActionResult<List<string>> GetCategories(string? searchText)
         {
-            return _recipesService.GetCategories(searchText);
+            return recipesService.GetCategories(searchText);
         }
 
         [HttpGet("Tags")]
         public async Task<ActionResult<List<string>>> GetTags()
         {
-            return await _recipesService.GetTags(publishedOnly: true);
+            return await recipesService.GetTags(publishedOnly: true);
         }
 
         [HttpGet("TagsForNewRecipe")]
         [Authorize]
         public async Task<ActionResult<List<string>>> GetTagsNewRecipe()
         {
-            return await _recipesService.GetTags(publishedOnly: true);
+            return await recipesService.GetTags(publishedOnly: true);
         }
 
         [HttpGet("AllTags")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<List<string>>> GetAllTags()
         {
-            return await _recipesService.GetTags();
+            return await recipesService.GetTags();
         }
 
         [HttpGet("AllTagsCreatedByUser")]
         [Authorize]
         public async Task<ActionResult<List<string>>> GetAllTagsCreatedByUser()
         {
-            return await _recipesService.GetTags(userNick: User.FindFirstValue(ClaimTypes.GivenName));
+            return await recipesService.GetTags(userNick: User.FindFirstValue(ClaimTypes.GivenName));
         }
 
         [HttpGet("FavoritesTags")]
         [Authorize]
         public async Task<ActionResult<List<string>>> GetFavoritesTags()
         {
-            return await _recipesService.GetFavoritesTags(userId: User.FindFirstValue(ClaimTypes.NameIdentifier), publishedOnly: true);
+            return await recipesService.GetFavoritesTags(userId: User.FindFirstValue(ClaimTypes.NameIdentifier), publishedOnly: true);
         }
 
         [HttpPost("{id}/likeToggle")]
@@ -181,7 +172,7 @@ namespace CulinaryRecipes.API.Controllers
             {
                 return BadRequest();
             }
-            await _recipesService.LikeRecipeToggleAsync(id, userId);
+            await recipesService.LikeRecipeToggleAsync(id, userId);
             return Ok();
         }
     }
