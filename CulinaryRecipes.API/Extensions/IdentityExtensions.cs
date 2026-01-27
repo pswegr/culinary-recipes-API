@@ -26,6 +26,10 @@ namespace CulinaryRecipes.API.Extensions
             if(dbIdentitySettings == null) { 
                 throw new Exception("dbIdentitySettings is null");
             }
+            if (jwtSettings == null)
+            {
+                throw new Exception("jwtSettings is null");
+            }
 
             services.AddIdentityMongoDbProvider<ApplicationUser, ApplicationRole>(identityOptions =>
             {

@@ -9,6 +9,6 @@ namespace CulinaryRecipes.API.Models.Identity
     [CollectionName("Users")]
     public class ApplicationUser : MongoUser
     {
-        public string Nick { get; set; }
+        public string Nick { get; set; } = string.Empty;
     }
 }

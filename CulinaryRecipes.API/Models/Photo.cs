@@ -2,8 +2,8 @@
 {
     public class Photo
     {
-        public string url { get; set; }
-        public string publicId { get; set; }
-        public string mainColor { get; set; }
+        public string url { get; set; } = string.Empty;
+        public string publicId { get; set; } = string.Empty;
+        public string mainColor { get; set; } = string.Empty;
     }
 }

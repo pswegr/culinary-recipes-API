@@ -13,7 +13,7 @@ namespace CulinaryRecipes.API.Policy
             _configuration = configuration;
         }
 
-        public override async Task<AuthorizationPolicy> GetPolicyAsync(string policyName)
+        public override async Task<AuthorizationPolicy?> GetPolicyAsync(string policyName)
         {
             var defaultPolicy = await base.GetDefaultPolicyAsync();
             var policy = await base.GetPolicyAsync(policyName);
@@ -29,4 +29,3 @@ namespace CulinaryRecipes.API.Policy
         }
     }
 }
-
