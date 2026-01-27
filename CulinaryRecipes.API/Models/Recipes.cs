@@ -1,8 +1,10 @@
 ﻿using MongoDB.Bson.Serialization.Attributes;
 
+using CulinaryRecipes.API.Models.Interfaces;
+
 namespace CulinaryRecipes.API.Models
 {
-    public class Recipes
+    public class Recipes : IEntity
     {
         [BsonId]
         [BsonRepresentation(MongoDB.Bson.BsonType.ObjectId)]
