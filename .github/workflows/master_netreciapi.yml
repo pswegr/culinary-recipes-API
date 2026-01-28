@@ -33,7 +33,7 @@ jobs:
         run: dotnet publish CulinaryRecipes.API/CulinaryRecipes.API.csproj -c Release -o ${{env.DOTNET_ROOT}}/myapp
 
       - name: List publish output
-        run: ls -la publish
+        run: ls -la ${{env.DOTNET_ROOT}}/myapp
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
