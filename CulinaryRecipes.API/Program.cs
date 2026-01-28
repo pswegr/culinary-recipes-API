@@ -19,12 +19,12 @@ BsonSerializer.RegisterSerializer(new DateTimeOffsetSerializer(MongoDB.Bson.Bson
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(MyAllowSpecificOrigins,
-                          policy =>
-                          {
-                              policy.WithOrigins("https://agreeable-river-0f3a70903.5.azurestaticapps.net","https://netreci.com")
-                                                  .AllowAnyHeader()
-                                                  .AllowAnyMethod();
-                          });
+        policy =>
+        {
+            policy.WithOrigins("https://netreci.com")
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        });
 });
 
 
