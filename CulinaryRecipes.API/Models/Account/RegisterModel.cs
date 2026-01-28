@@ -6,14 +6,14 @@ namespace CulinaryRecipes.API.Models.Account
     {
         [Required]
         [EmailAddress]
-        public string Email { get; set; }
+        public string Email { get; set; } = string.Empty;
 
         [Required]
         [StringLength(100, MinimumLength = 6)]
-        public string Password { get; set; }
+        public string Password { get; set; } = string.Empty;
 
         [Required]
         [RegularExpression("^[a-zA-Z0-9]*$", ErrorMessage = "Nickname must be alphanumeric.")]
-        public string Nick { get; set; }
+        public string Nick { get; set; } = string.Empty;
     }
 }

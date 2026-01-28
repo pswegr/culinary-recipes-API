@@ -1,40 +1,41 @@
-﻿using CloudinaryDotNet.Actions;
+﻿using CulinaryRecipes.API.Features.Recipes.Commands;
+using CulinaryRecipes.API.Features.Recipes.Queries;
+using CulinaryRecipes.API.Features.Recipes.Results;
+using CulinaryRecipes.API.Mediation;
 using CulinaryRecipes.API.Models;
-using CulinaryRecipes.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using System.Text.Json;
 
 namespace CulinaryRecipes.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class RecipesController(IRecipesService recipesService, IPhotoService photoService) : ControllerBase
+    public class RecipesController(IMediator mediator) : ControllerBase
     {
         [HttpGet("GetAll")]
         [Authorize(Roles = "Admin")]
         public async Task<List<Recipes>> Get([FromQuery] string[]? tags, [FromQuery] string? category, [FromQuery] string? content) =>
-            await recipesService.GetAsync(tags: tags, category: category, content: content);
+            await mediator.Send(new GetRecipesQuery(tags, category, content));
 
         [HttpGet("GetAllCreatedByUser")]
         [Authorize]
-        public async Task<List<Recipes>> GetAllCreatedByUser([FromQuery] string[]? tags, [FromQuery] string? category,  [FromQuery] string? content) =>
-            await recipesService.GetAsync(tags: tags, category: category, userNick: User.FindFirstValue(ClaimTypes.GivenName), content: content);
+        public async Task<List<Recipes>> GetAllCreatedByUser([FromQuery] string[]? tags, [FromQuery] string? category, [FromQuery] string? content) =>
+            await mediator.Send(new GetRecipesQuery(tags, category, content, UserNick: User.FindFirstValue(ClaimTypes.GivenName)));
 
         [HttpGet("GetFavorites")]
         [Authorize]
         public async Task<List<Recipes>> GetFavorites([FromQuery] string[]? tags, [FromQuery] string? category, [FromQuery] string? content) =>
-          await recipesService.GetFavoritesAsync(User.FindFirstValue(ClaimTypes.NameIdentifier), tags, category, publishedOnly: true, content: content);
+            await mediator.Send(new GetFavoritesQuery(User.FindFirstValue(ClaimTypes.NameIdentifier), tags, category, content, PublishedOnly: true));
 
         [HttpGet]
         public async Task<List<Recipes>> GetPublished([FromQuery] string[]? tags, [FromQuery] string? category, [FromQuery] string? content) =>
-          await recipesService.GetAsync(tags, category, publishedOnly: true, content: content);
+            await mediator.Send(new GetRecipesQuery(tags, category, content, PublishedOnly: true));
 
         [HttpGet("{id:length(24)}")]
         public async Task<ActionResult<Recipes>> Get(string id)
         {
-            var recipes = await recipesService.GetAsync(id);
+            var recipes = await mediator.Send(new GetRecipeByIdQuery(id));
 
             if (recipes is null)
             {
@@ -48,119 +49,72 @@ namespace CulinaryRecipes.API.Controllers
         [Authorize]
         public async Task<IActionResult> Upsert([FromForm] string recipe, IFormFile? photo)
         {
-            try
+            var userNick = User.FindFirstValue(ClaimTypes.GivenName);
+            var isAdmin = User.IsInRole("Admin");
+            var result = await mediator.Send(new UpsertRecipeCommand(recipe, photo, userNick, isAdmin));
+
+            return result.Status switch
             {
-                var userNick = User.FindFirstValue(ClaimTypes.GivenName);
-                var isAdmin = User.IsInRole("Admin");
-                Recipes? recipeModel =
-                    JsonSerializer.Deserialize<Recipes>(recipe);
-                var photoUploadresult = new ImageUploadResult();
-
-                if (photo != null)
-                {
-                    photoUploadresult = await photoService.UploadPhotoAsync(photo);
-                }
-
-                if (recipeModel is null)
-                    return BadRequest();
-
-                if (!string.IsNullOrEmpty(recipeModel.id))
-                {
-                    var recipeFromDb = await recipesService.GetAsync(recipeModel.id);
-
-                    if (recipeFromDb is null)
-                    {
-                        return NotFound();
-                    }
-                    recipeModel.LikedByUsers = recipeFromDb.LikedByUsers;
-                    recipeModel.updatedAt = DateTime.UtcNow;
-
-                    if (recipeFromDb.createdBy == userNick)
-                    {
-                        recipeModel.updatedBy = userNick;
-                        await recipesService.UpdateAsync(recipeModel.id, recipeModel, photoUploadresult, userNick);
-                    }else if ( isAdmin)
-                    {
-                        recipeModel.updatedBy = userNick;
-                        await recipesService.UpdateAsync(recipeModel.id, recipeModel, photoUploadresult, userNick);
-                    }
-                    else
-                    {
-                        return Unauthorized();
-                    }
-             
-                    return NoContent();
-                }
-                else
-                {
-                    recipeModel.createdAt = DateTime.UtcNow;
-                    recipeModel.createdBy = userNick;
-                    await recipesService.CreateAsync(recipeModel, photoUploadresult, userNick);
-                    return CreatedAtAction(nameof(Get), new { id = recipeModel.id }, recipeModel);
-                }
-            }
-            catch
-            {
-                return BadRequest();
-            }
-           
-           
+                UpsertRecipeStatus.BadRequest => BadRequest(),
+                UpsertRecipeStatus.NotFound => NotFound(),
+                UpsertRecipeStatus.Unauthorized => Unauthorized(),
+                UpsertRecipeStatus.Updated => NoContent(),
+                UpsertRecipeStatus.Created => CreatedAtAction(nameof(Get), new { id = result.Recipe?.id }, result.Recipe),
+                _ => BadRequest()
+            };
         }
 
         [HttpDelete("{id:length(24)}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(string id)
         {
-            var recipes = await recipesService.GetAsync(id);
-
-            if (recipes is null)
+            var deleted = await mediator.Send(new DeleteRecipeCommand(id));
+            if (!deleted)
             {
                 return NotFound();
             }
-
-            await recipesService.RemoveAsync(id, recipes);
 
             return NoContent();
         }
 
         [HttpGet("Categories")]
-        public ActionResult<List<string>> GetCategories(string? searchText)
+        public async Task<ActionResult<List<string>>> GetCategories(string? searchText)
         {
-            return recipesService.GetCategories(searchText);
+            return await mediator.Send(new GetCategoriesQuery(searchText));
         }
 
         [HttpGet("Tags")]
         public async Task<ActionResult<List<string>>> GetTags()
         {
-            return await recipesService.GetTags(publishedOnly: true);
+            return await mediator.Send(new GetTagsQuery(PublishedOnly: true));
         }
 
         [HttpGet("TagsForNewRecipe")]
         [Authorize]
         public async Task<ActionResult<List<string>>> GetTagsNewRecipe()
         {
-            return await recipesService.GetTags(publishedOnly: true);
+            return await mediator.Send(new GetTagsQuery(PublishedOnly: true));
         }
 
         [HttpGet("AllTags")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<List<string>>> GetAllTags()
         {
-            return await recipesService.GetTags();
+            return await mediator.Send(new GetTagsQuery());
         }
 
         [HttpGet("AllTagsCreatedByUser")]
         [Authorize]
         public async Task<ActionResult<List<string>>> GetAllTagsCreatedByUser()
         {
-            return await recipesService.GetTags(userNick: User.FindFirstValue(ClaimTypes.GivenName));
+            return await mediator.Send(new GetTagsQuery(UserNick: User.FindFirstValue(ClaimTypes.GivenName)));
         }
 
         [HttpGet("FavoritesTags")]
         [Authorize]
         public async Task<ActionResult<List<string>>> GetFavoritesTags()
         {
-            return await recipesService.GetFavoritesTags(userId: User.FindFirstValue(ClaimTypes.NameIdentifier), publishedOnly: true);
+            return await mediator.Send(new GetFavoritesTagsQuery(User.FindFirstValue(ClaimTypes.NameIdentifier), PublishedOnly: true));
         }
 
         [HttpPost("{id}/likeToggle")]
@@ -172,7 +126,7 @@ namespace CulinaryRecipes.API.Controllers
             {
                 return BadRequest();
             }
-            await recipesService.LikeRecipeToggleAsync(id, userId);
+            await mediator.Send(new LikeRecipeToggleCommand(id, userId));
             return Ok();
         }
     }

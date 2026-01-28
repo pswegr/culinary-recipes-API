@@ -2,6 +2,6 @@
 {
     public class ValidModel
     {
-        public string Property { get; set; }
+        public string Property { get; set; } = string.Empty;
     }
 }

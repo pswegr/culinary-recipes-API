@@ -2,8 +2,8 @@
 {
     public class Ingredient
     {
-        public string name { get; set; }
-        public string quantity { get; set; }
-        public string unit { get; set; }
+        public string name { get; set; } = string.Empty;
+        public string quantity { get; set; } = string.Empty;
+        public string unit { get; set; } = string.Empty;
     }
 }
