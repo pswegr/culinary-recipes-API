@@ -3,7 +3,7 @@ name: Build Test Publish Deploy
 on:
   push:
     branches:
-      - main
+      - master
   workflow_dispatch:
 
 env:
