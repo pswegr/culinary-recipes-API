@@ -98,8 +98,8 @@ namespace CulinaryRecipes.API.Controllers
             var loginResponse = new LoginResponseModel
             {
                 Token = token,
-                Email = user.Email,
-                Nick = user.Nick,
+                Email = user.Email ?? string.Empty,
+                Nick = user.Nick ?? string.Empty,
                 UserId = user.Id.ToString()
             };
 
@@ -131,6 +131,11 @@ namespace CulinaryRecipes.API.Controllers
             }
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+            if (string.IsNullOrWhiteSpace(user.Email))
+            {
+                return BadRequest("Invalid email address.");
+            }
 
             var angularResetLink = $"https://netreci.com/#/account/resetPassword?email={user.Email}&token={Uri.EscapeDataString(token)}";
 
@@ -177,15 +182,22 @@ namespace CulinaryRecipes.API.Controllers
 
         private string GenerateJwtToken(ApplicationUser user)
         {
+            var userName = user.UserName ?? string.Empty;
+            var email = user.Email ?? string.Empty;
+            var nick = user.Nick ?? string.Empty;
             var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.Name, user.UserName),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.GivenName, user.Nick)
+                new Claim(ClaimTypes.Name, userName),
+                new Claim(ClaimTypes.Email, email),
+                new Claim(ClaimTypes.GivenName, nick)
             };
             var jwtSettings = _configuration.GetSection("Jwt").Get<JwtSettings>();
+            if (jwtSettings == null)
+            {
+                throw new InvalidOperationException("Jwt settings are missing.");
+            }
             var roles = _userManager.GetRolesAsync(user).Result;
             claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 

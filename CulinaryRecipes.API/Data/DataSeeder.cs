@@ -34,6 +34,10 @@ namespace CulinaryRecipes.API.Data
         public async Task SeedAdminUserAsync()
         {
             var adminDefaultUser = _configuration.GetSection("AdminUser").Get<AdminUserSettings>();
+            if (adminDefaultUser == null)
+            {
+                throw new InvalidOperationException("AdminUser settings are missing.");
+            }
             var adminUser = await _userManager.FindByEmailAsync(adminDefaultUser.Email);
           
             if (adminUser == null)
