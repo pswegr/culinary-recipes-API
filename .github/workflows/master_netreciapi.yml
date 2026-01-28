@@ -1,68 +1,79 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
+name: Build, Test, Publish, Deploy
 
-name: Build and deploy ASP.Net Core app to Azure Web App - netreciapi
 
 on:
-  push:
-    branches:
-      - master
-  workflow_dispatch:
+push:
+branches: [ "main" ]
+workflow_dispatch:
+
+
+env:
+DOTNET_VERSION: "8.0.x"
+API_PROJECT: "src/CulinaryRecipes.API/CulinaryRecipes.API.csproj"
+SOLUTION: "CulinaryRecipes.sln"
+PUBLISH_DIR: "./publish"
+AZURE_WEBAPP_NAME: "YOUR_APP_SERVICE_NAME" # <- change
+
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read #This is required for actions/checkout
+ci:
+name: Build & Test & Publish
+runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Set up .NET Core
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.x'
+steps:
+- name: Checkout
+uses: actions/checkout@v4
 
-      - name: Build with dotnet
-        run: dotnet build --configuration Release
 
-      - name: dotnet publish
-        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+- name: Setup .NET
+uses: actions/setup-dotnet@v4
+with:
+dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
-        with:
-          name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    environment:
-      name: 'Production'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-    permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+- name: Restore
+run: dotnet restore ${{ env.SOLUTION }}
 
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: .net-app
-      
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_702DF9E4C49447A09FB435256A0BFDF4 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_1E09EF65FD164B7584DED561E6528FEE }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_57B0D59F8E5A4A0BB61D99F32D529581 }}
 
-      - name: Deploy to Azure Web App
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: 'netreciapi'
-          slot-name: 'Production'
-          package: .
-          
+- name: Build
+run: dotnet build ${{ env.SOLUTION }} -c Release --no-restore
+
+
+# ✅ If tests fail, the job fails and the pipeline is NOT successful
+- name: Test
+run: dotnet test ${{ env.SOLUTION }} -c Release --no-build --verbosity normal
+
+
+# ✅ Publish ONLY the API project (prevents deploying *.Tests.runtimeconfig.json)
+- name: Publish API
+run: dotnet publish ${{ env.API_PROJECT }} -c Release -o ${{ env.PUBLISH_DIR }} --no-build
+
+
+- name: Upload artifact (published app)
+uses: actions/upload-artifact@v4
+with:
+name: api_publish
+path: ${{ env.PUBLISH_DIR }}
+
+
+deploy:
+name: Deploy to Azure App Service
+runs-on: ubuntu-latest
+needs: ci # ✅ deploy runs ONLY if ci (including tests) succeeded
+
+
+steps:
+- name: Download artifact
+uses: actions/download-artifact@v4
+with:
+name: api_publish
+path: ${{ env.PUBLISH_DIR }}
+
+
+- name: Deploy
+uses: azure/webapps-deploy@v3
+with:
+app-name: ${{ env.AZURE_WEBAPP_NAME }}
+publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+package: ${{ env.PUBLISH_DIR }}
