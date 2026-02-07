@@ -2,13 +2,13 @@ using CulinaryRecipes.API.Data.Interfaces;
 using CulinaryRecipes.API.Extensions;
 using CulinaryRecipes.API.Hubs;
 using CulinaryRecipes.API.Models;
-using CulinaryRecipes.API.Models.Messaging;
 using CulinaryRecipes.API.Models.Identity;
-using MongoDB.Bson.Serialization.Serializers;
-using MongoDB.Bson.Serialization;
+using CulinaryRecipes.API.Models.Messaging;
 using Microsoft.OpenApi.Models;
+using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.Serializers;
 
-var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
+const string CorsPolicyName = "_myAllowSpecificOrigins";
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,14 +20,15 @@ BsonSerializer.RegisterSerializer(new DateTimeOffsetSerializer(MongoDB.Bson.Bson
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(MyAllowSpecificOrigins,
-        policy =>
-        {
-            policy.WithOrigins("https://netreci.com", "http://localhost:4200")
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials();
-        });
+    options.AddPolicy(CorsPolicyName, policy =>
+    {
+        policy.WithOrigins(
+                "https://netreci.com",
+                "https://www.netreci.com")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
 });
 
 
@@ -86,14 +87,16 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseCors(MyAllowSpecificOrigins);
+app.UseRouting();
+
+app.UseCors(CorsPolicyName);
 
 app.UseAuthentication();
 
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<MessagingHub>("/hubs/messaging");
+app.MapHub<MessagingHub>("/hubs/messaging").RequireCors(CorsPolicyName);
 
 app.Run();
 
