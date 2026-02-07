@@ -1,6 +1,8 @@
 using CulinaryRecipes.API.Data.Interfaces;
 using CulinaryRecipes.API.Extensions;
+using CulinaryRecipes.API.Hubs;
 using CulinaryRecipes.API.Models;
+using CulinaryRecipes.API.Models.Messaging;
 using CulinaryRecipes.API.Models.Identity;
 using MongoDB.Bson.Serialization.Serializers;
 using MongoDB.Bson.Serialization;
@@ -21,9 +23,10 @@ builder.Services.AddCors(options =>
     options.AddPolicy(MyAllowSpecificOrigins,
         policy =>
         {
-            policy.WithOrigins("https://netreci.com")
+            policy.WithOrigins("https://netreci.com", "http://localhost:4200")
                 .AllowAnyHeader()
-                .AllowAnyMethod();
+                .AllowAnyMethod()
+                .AllowCredentials();
         });
 });
 
@@ -33,6 +36,9 @@ builder.Services.Configure<CulinaryRecipesDatabaseSettings>(
 
 builder.Services.Configure<IdentityDatabaseSettings>(
     builder.Configuration.GetSection("IdentityDatabase"));
+
+builder.Services.Configure<MessagingDatabaseSettings>(
+    builder.Configuration.GetSection("MessagingDatabase"));
 
 builder.Services.Configure<EmailSettings>(
     builder.Configuration.GetSection("SMTP"));
@@ -87,6 +93,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<MessagingHub>("/hubs/messaging");
 
 app.Run();
 
