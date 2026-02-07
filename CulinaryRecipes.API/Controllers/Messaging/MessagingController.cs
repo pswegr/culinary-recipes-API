@@ -22,7 +22,11 @@ namespace CulinaryRecipes.API.Controllers.Messaging
         [HttpGet("conversations")]
         public async Task<ActionResult<List<Conversation>>> GetConversations()
         {
-            var userId = GetRequiredUserId();
+            if (!TryGetUserId(out var userId))
+            {
+                return Unauthorized();
+            }
+
             var conversations = await _messagingService.GetConversationsAsync(userId);
             return Ok(conversations);
         }
@@ -30,7 +34,11 @@ namespace CulinaryRecipes.API.Controllers.Messaging
         [HttpGet("conversations/{conversationId:length(24)}/messages")]
         public async Task<ActionResult<List<ChatMessage>>> GetMessages(string conversationId, [FromQuery] int skip = 0, [FromQuery] int take = 50)
         {
-            var userId = GetRequiredUserId();
+            if (!TryGetUserId(out var userId))
+            {
+                return Unauthorized();
+            }
+
             var messages = await _messagingService.GetConversationMessagesAsync(userId, conversationId, skip, take);
             return Ok(messages);
         }
@@ -38,7 +46,11 @@ namespace CulinaryRecipes.API.Controllers.Messaging
         [HttpGet("requests/pending")]
         public async Task<ActionResult<List<MessageRequest>>> GetPendingRequests()
         {
-            var userId = GetRequiredUserId();
+            if (!TryGetUserId(out var userId))
+            {
+                return Unauthorized();
+            }
+
             var requests = await _messagingService.GetPendingRequestsAsync(userId);
             return Ok(requests);
         }
@@ -46,7 +58,11 @@ namespace CulinaryRecipes.API.Controllers.Messaging
         [HttpPost("requests")]
         public async Task<ActionResult<MessageRequest>> CreateMessageRequest([FromBody] CreateMessageRequestModel model)
         {
-            var userId = GetRequiredUserId();
+            if (!TryGetUserId(out var userId))
+            {
+                return Unauthorized();
+            }
+
             var request = await _messagingService.CreateMessageRequestAsync(userId, model.RecipientUserId);
             if (request == null)
             {
@@ -59,7 +75,11 @@ namespace CulinaryRecipes.API.Controllers.Messaging
         [HttpPost("requests/{requestId:length(24)}/respond")]
         public async Task<ActionResult<MessageRequest>> RespondMessageRequest(string requestId, [FromBody] RespondMessageRequestModel model)
         {
-            var userId = GetRequiredUserId();
+            if (!TryGetUserId(out var userId))
+            {
+                return Unauthorized();
+            }
+
             var request = await _messagingService.RespondToMessageRequestAsync(requestId, userId, model.Accept);
             if (request == null)
             {
@@ -72,7 +92,11 @@ namespace CulinaryRecipes.API.Controllers.Messaging
         [HttpPost("messages")]
         public async Task<ActionResult<ChatMessage>> SendMessage([FromBody] SendMessageModel model)
         {
-            var userId = GetRequiredUserId();
+            if (!TryGetUserId(out var userId))
+            {
+                return Unauthorized();
+            }
+
             var message = await _messagingService.SendMessageAsync(userId, model);
             if (message == null)
             {
@@ -82,15 +106,15 @@ namespace CulinaryRecipes.API.Controllers.Messaging
             return Ok(message);
         }
 
-        private string GetRequiredUserId()
+        private bool TryGetUserId(out string userId)
         {
-            var userId = User.GetUserId();
+            userId = User.GetUserId() ?? string.Empty;
             if (string.IsNullOrWhiteSpace(userId))
             {
-                throw new UnauthorizedAccessException("User is not authenticated.");
+                return false;
             }
 
-            return userId;
+            return true;
         }
     }
 }

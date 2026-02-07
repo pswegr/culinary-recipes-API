@@ -21,7 +21,11 @@ namespace CulinaryRecipes.API.Controllers.Messaging
         [HttpGet]
         public async Task<ActionResult<List<Notification>>> Get([FromQuery] bool unreadOnly = false, [FromQuery] int take = 50)
         {
-            var userId = GetRequiredUserId();
+            if (!TryGetUserId(out var userId))
+            {
+                return Unauthorized();
+            }
+
             var notifications = await _notificationService.GetForUserAsync(userId, unreadOnly, Math.Clamp(take, 1, 200));
             return Ok(notifications);
         }
@@ -29,7 +33,11 @@ namespace CulinaryRecipes.API.Controllers.Messaging
         [HttpGet("unread-count")]
         public async Task<ActionResult<long>> GetUnreadCount()
         {
-            var userId = GetRequiredUserId();
+            if (!TryGetUserId(out var userId))
+            {
+                return Unauthorized();
+            }
+
             var unreadCount = await _notificationService.GetUnreadCountAsync(userId);
             return Ok(unreadCount);
         }
@@ -37,7 +45,11 @@ namespace CulinaryRecipes.API.Controllers.Messaging
         [HttpPost("{notificationId:length(24)}/read")]
         public async Task<IActionResult> MarkAsRead(string notificationId)
         {
-            var userId = GetRequiredUserId();
+            if (!TryGetUserId(out var userId))
+            {
+                return Unauthorized();
+            }
+
             var marked = await _notificationService.MarkAsReadAsync(userId, notificationId);
             if (!marked)
             {
@@ -47,15 +59,15 @@ namespace CulinaryRecipes.API.Controllers.Messaging
             return NoContent();
         }
 
-        private string GetRequiredUserId()
+        private bool TryGetUserId(out string userId)
         {
-            var userId = User.GetUserId();
+            userId = User.GetUserId() ?? string.Empty;
             if (string.IsNullOrWhiteSpace(userId))
             {
-                throw new UnauthorizedAccessException("User is not authenticated.");
+                return false;
             }
 
-            return userId;
+            return true;
         }
     }
 }
