@@ -1,19 +1,23 @@
-﻿using CulinaryRecipes.API.Models;
+using CulinaryRecipes.API.Models;
 using CulinaryRecipes.API.Services.Interfaces;
 using Microsoft.Extensions.Options;
 using System.Net.Mail;
-using System.Net;
 
 namespace CulinaryRecipes.API.Services
 {
     public class EmailService : IEmailService
     {
         private readonly EmailSettings _emailSettings;
+        private readonly SmtpClient _smtpClient;
         private readonly ILogger<EmailService> _logger;
 
-        public EmailService(IOptions<EmailSettings> emailSettings, ILogger<EmailService> logger)
+        public EmailService(
+            IOptions<EmailSettings> emailSettings,
+            SmtpClient smtpClient,
+            ILogger<EmailService> logger)
         {
             _emailSettings = emailSettings.Value;
+            _smtpClient = smtpClient;
             _logger = logger;
         }
 
@@ -21,16 +25,14 @@ namespace CulinaryRecipes.API.Services
         {
             try
             {
-                using var smtpClient = new SmtpClient(_emailSettings.SmtpServer)
-                {
-                    Port = _emailSettings.SmtpPort,
-                    Credentials = new NetworkCredential(_emailSettings.SmtpUser, _emailSettings.SmtpPassword),
-                    EnableSsl = true,
-                };
+                var fromEmail = ResolveFromEmail();
+                var fromName = string.IsNullOrWhiteSpace(_emailSettings.FromName)
+                    ? "Culinary Recipes"
+                    : _emailSettings.FromName;
 
                 using var mailMessage = new MailMessage
                 {
-                    From = new MailAddress(_emailSettings.SmtpHost, _emailSettings.SmtpUser),
+                    From = new MailAddress(fromEmail, fromName),
                     Subject = subject,
                     Body = message,
                     IsBodyHtml = true,
@@ -38,7 +40,7 @@ namespace CulinaryRecipes.API.Services
 
                 mailMessage.To.Add(toEmail);
 
-                await smtpClient.SendMailAsync(mailMessage);
+                await _smtpClient.SendMailAsync(mailMessage);
             }
             catch (SmtpException ex) when (IsBasicAuthDisabled(ex))
             {
@@ -60,6 +62,21 @@ namespace CulinaryRecipes.API.Services
             return ex.Message.Contains("5.7.139", StringComparison.OrdinalIgnoreCase)
                 || ex.Message.Contains("5.7.57", StringComparison.OrdinalIgnoreCase)
                 || ex.Message.Contains("basic authentication is disabled", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private string ResolveFromEmail()
+        {
+            if (!string.IsNullOrWhiteSpace(_emailSettings.FromEmail))
+            {
+                return _emailSettings.FromEmail;
+            }
+
+            if (!string.IsNullOrWhiteSpace(_emailSettings.SmtpHost))
+            {
+                return _emailSettings.SmtpHost;
+            }
+
+            return _emailSettings.SmtpUser;
         }
     }
 }

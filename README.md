@@ -1,5 +1,34 @@
 # CulinaryRecipes.API
 
+## Local setup (including Mailjet SMTP)
+
+1. Start MongoDB locally (default connection used by this app):
+   - `mongodb://localhost:27017`
+2. Create a Mailjet account and prepare:
+   - `API Key` and `Secret Key`
+   - one verified sender email/domain in Mailjet
+3. Set required secrets (recommended over committing credentials to `appsettings.json`):
+
+```bash
+dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "SMTP:SmtpServer" "in-v3.mailjet.com"
+dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "SMTP:SmtpPort" "587"
+dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "SMTP:SmtpUser" "your-mailjet-api-key"
+dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "SMTP:SmtpPassword" "your-mailjet-secret-key"
+dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "SMTP:FromEmail" "verified-sender@yourdomain.com"
+dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "SMTP:FromName" "Culinary Recipes"
+dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "Jwt:Key" "YourLongRandomJwtSigningKeyAtLeast32Chars"
+```
+
+4. Run the API:
+
+```bash
+dotnet run --project CulinaryRecipes.API/CulinaryRecipes.API.csproj
+```
+
+5. Test email flow:
+   - Register account: `POST /api/Account/register` (confirmation email is sent)
+   - Forgot password: `POST /api/Account/forgotPassword` (reset email is sent)
+
 ## Messaging OpenAPI + SignalR integration guide
 
 ### Where to find API docs
