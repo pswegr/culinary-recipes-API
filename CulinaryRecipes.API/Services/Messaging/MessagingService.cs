@@ -9,18 +9,31 @@ namespace CulinaryRecipes.API.Services.Messaging
     {
         private readonly IMessagingUnitOfWork _unitOfWork;
         private readonly INotificationService _notificationService;
+        private readonly ILogger<MessagingService> _logger;
 
         public MessagingService(
             IMessagingUnitOfWork unitOfWork,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            ILogger<MessagingService> logger)
         {
             _unitOfWork = unitOfWork;
             _notificationService = notificationService;
+            _logger = logger;
         }
 
         public async Task<MessagingHandshake> CreateHandshakeAsync(string userId, string connectionId)
         {
-            var pendingRequests = await _unitOfWork.MessageRequests.GetPendingForRecipientAsync(userId);
+            List<MessageRequest> pendingRequests;
+            try
+            {
+                pendingRequests = await _unitOfWork.MessageRequests.GetPendingForRecipientAsync(userId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load pending message requests for user {UserId}.", userId);
+                pendingRequests = new List<MessageRequest>();
+            }
+
             var unreadNotifications = await _notificationService.GetUnreadCountAsync(userId);
 
             return new MessagingHandshake

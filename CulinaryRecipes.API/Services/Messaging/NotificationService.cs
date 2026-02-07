@@ -10,13 +10,16 @@ namespace CulinaryRecipes.API.Services.Messaging
     {
         private readonly IMessagingUnitOfWork _unitOfWork;
         private readonly IHubContext<MessagingHub, IMessagingClient> _hubContext;
+        private readonly ILogger<NotificationService> _logger;
 
         public NotificationService(
             IMessagingUnitOfWork unitOfWork,
-            IHubContext<MessagingHub, IMessagingClient> hubContext)
+            IHubContext<MessagingHub, IMessagingClient> hubContext,
+            ILogger<NotificationService> logger)
         {
             _unitOfWork = unitOfWork;
             _hubContext = hubContext;
+            _logger = logger;
         }
 
         public async Task<Notification> CreateAsync(
@@ -48,12 +51,28 @@ namespace CulinaryRecipes.API.Services.Messaging
 
         public async Task<List<Notification>> GetForUserAsync(string userId, bool unreadOnly, int take)
         {
-            return await _unitOfWork.Notifications.GetForRecipientAsync(userId, unreadOnly, take);
+            try
+            {
+                return await _unitOfWork.Notifications.GetForRecipientAsync(userId, unreadOnly, take);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load notifications for user {UserId}.", userId);
+                return new List<Notification>();
+            }
         }
 
         public async Task<long> GetUnreadCountAsync(string userId)
         {
-            return await _unitOfWork.Notifications.GetUnreadCountAsync(userId);
+            try
+            {
+                return await _unitOfWork.Notifications.GetUnreadCountAsync(userId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load unread notification count for user {UserId}.", userId);
+                return 0;
+            }
         }
 
         public async Task<bool> MarkAsReadAsync(string userId, string notificationId)
