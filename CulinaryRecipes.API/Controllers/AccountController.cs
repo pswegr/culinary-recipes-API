@@ -19,17 +19,23 @@ namespace CulinaryRecipes.API.Controllers
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IConfiguration _configuration;
         private readonly IEmailService _emailService;
+        private readonly ILogger<AccountController> _logger;
+        private readonly IWebHostEnvironment _environment;
 
         public AccountController(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IConfiguration configuration,
-            IEmailService emailService)
+            IEmailService emailService,
+            ILogger<AccountController> logger,
+            IWebHostEnvironment environment)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _configuration = configuration;
             _emailService = emailService;
+            _logger = logger;
+            _environment = environment;
         }
 
         [HttpPost("register")]
@@ -76,8 +82,18 @@ namespace CulinaryRecipes.API.Controllers
 
             var angularConfirmationLink = $"https://netreci.com/#/account/confirmEmail?email={user.Email}&token={Uri.EscapeDataString(token)}";
 
-            await _emailService.SendEmailAsync(user.Email, "Confirm your email", $"Please confirm your account by clicking <a href=\"{angularConfirmationLink}\">here</a>.");
-            return Ok(new { Message = "User registered successfully. Please check your email to confirm your account." });
+            try
+            {
+                await _emailService.SendEmailAsync(user.Email, "Confirm your email", $"Please confirm your account by clicking <a href=\"{angularConfirmationLink}\">here</a>.");
+                return Ok(new { Message = "User registered successfully. Please check your email to confirm your account.", EmailSent = true });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "User {UserId} created, but confirmation email could not be sent to {Email}.", user.Id, user.Email);
+                return BuildEmailFailureResponse(
+                    "User registered successfully, but confirmation email could not be sent.",
+                    angularConfirmationLink);
+            }
         }
 
         [HttpPost("login")]
@@ -139,9 +155,19 @@ namespace CulinaryRecipes.API.Controllers
 
             var angularResetLink = $"https://netreci.com/#/account/resetPassword?email={user.Email}&token={Uri.EscapeDataString(token)}";
 
-            await _emailService.SendEmailAsync(user.Email, "Reset your password", $"Reset your password by clicking <a href=\"{angularResetLink}\">here</a>.");
+            try
+            {
+                await _emailService.SendEmailAsync(user.Email, "Reset your password", $"Reset your password by clicking <a href=\"{angularResetLink}\">here</a>.");
 
-            return Ok(new { Message = "Password reset email sent. Please check your email." });
+                return Ok(new { Message = "Password reset email sent. Please check your email.", EmailSent = true });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Password reset email could not be sent to {Email}.", user.Email);
+                return BuildEmailFailureResponse(
+                    "Password reset request accepted, but reset email could not be sent.",
+                    angularResetLink);
+            }
         }
 
         [HttpPost("resetPassword")]
@@ -229,6 +255,25 @@ namespace CulinaryRecipes.API.Controllers
         {
             var user = _userManager.Users.SingleOrDefault(u => u.Email == email);
             return user == null;
+        }
+
+        private IActionResult BuildEmailFailureResponse(string message, string actionLink)
+        {
+            if (_environment.IsDevelopment())
+            {
+                return Ok(new
+                {
+                    Message = message,
+                    EmailSent = false,
+                    ActionLink = actionLink
+                });
+            }
+
+            return Ok(new
+            {
+                Message = message,
+                EmailSent = false
+            });
         }
     }
 }
