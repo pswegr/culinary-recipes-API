@@ -1,6 +1,6 @@
 # CulinaryRecipes.API
 
-## Local setup (including Mailjet SMTP)
+## Local setup (including Mailjet API)
 
 1. Start MongoDB locally (default connection used by this app):
    - `mongodb://localhost:27017`
@@ -10,14 +10,17 @@
 3. Set required secrets (recommended over committing credentials to `appsettings.json`):
 
 ```bash
-dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "SMTP:SmtpServer" "in-v3.mailjet.com"
-dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "SMTP:SmtpPort" "587"
-dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "SMTP:SmtpUser" "your-mailjet-api-key"
-dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "SMTP:SmtpPassword" "your-mailjet-secret-key"
+dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "SMTP:ApiKey" "your-mailjet-api-key"
+dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "SMTP:ApiSecret" "your-mailjet-secret-key"
+dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "SMTP:MailjetApiUrl" "https://api.mailjet.com/v3.1/send"
 dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "SMTP:FromEmail" "verified-sender@yourdomain.com"
 dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "SMTP:FromName" "Culinary Recipes"
 dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "Jwt:Key" "YourLongRandomJwtSigningKeyAtLeast32Chars"
 ```
+
+Alternative to user-secrets for keys:
+- `MJ_APIKEY_PUBLIC`
+- `MJ_APIKEY_PRIVATE`
 
 4. Run the API:
 

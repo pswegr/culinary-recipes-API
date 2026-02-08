@@ -19,8 +19,6 @@ using CulinaryRecipes.API.UnitOfWork.Messaging;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
-using System.Net;
-using System.Net.Mail;
 using System.Reflection;
 
 namespace CulinaryRecipes.API.Extensions
@@ -30,17 +28,7 @@ namespace CulinaryRecipes.API.Extensions
         public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration config)
         {
             services.Configure<CloudinarySettings>(config.GetSection("CloudinarySettings"));
-            services.AddScoped<SmtpClient>(sp =>
-            {
-                var settings = sp.GetRequiredService<IOptions<EmailSettings>>().Value;
-                return new SmtpClient(settings.SmtpServer)
-                {
-                    Port = settings.SmtpPort,
-                    Credentials = new NetworkCredential(settings.SmtpUser, settings.SmtpPassword),
-                    EnableSsl = true,
-                };
-            });
-            services.AddScoped<IEmailService, EmailService>();
+            services.AddHttpClient<IEmailService, EmailService>();
             services.AddScoped<IPhotoService, PhotoService>();
 
             services.AddSingleton<IMongoClient>(sp =>
