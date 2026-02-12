@@ -40,7 +40,11 @@ namespace CulinaryRecipes.API.Hubs
         public async Task SendMessageRequest(CreateMessageRequestModel model)
         {
             var senderUserId = GetRequiredUserId();
-            var request = await _messagingService.CreateMessageRequestAsync(senderUserId, model.RecipientUserId);
+            var recipientIdentifier = !string.IsNullOrWhiteSpace(model.RecipientNick)
+                ? model.RecipientNick
+                : model.RecipientUserId;
+
+            var request = await _messagingService.CreateMessageRequestAsync(senderUserId, recipientIdentifier);
             if (request == null)
             {
                 throw new HubException("Message request cannot be created.");

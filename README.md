@@ -100,9 +100,11 @@ dotnet run --project CulinaryRecipes.API/CulinaryRecipes.API.csproj
 
 ```json
 {
-  "recipientUserId": "user-2"
+  "recipientNick": "user2"
 }
 ```
+
+`recipientNick` is preferred. `recipientUserId` is still supported for backward compatibility.
 
 ### 4) Respond to messaging request
 

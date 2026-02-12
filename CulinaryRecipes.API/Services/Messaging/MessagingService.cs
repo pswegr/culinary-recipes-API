@@ -1,7 +1,9 @@
 using CulinaryRecipes.API.Models.Messaging;
 using CulinaryRecipes.API.Models.Messaging.Requests;
+using CulinaryRecipes.API.Models.Identity;
 using CulinaryRecipes.API.Services.Messaging.Interfaces;
 using CulinaryRecipes.API.UnitOfWork.Messaging;
+using Microsoft.AspNetCore.Identity;
 
 namespace CulinaryRecipes.API.Services.Messaging
 {
@@ -9,15 +11,18 @@ namespace CulinaryRecipes.API.Services.Messaging
     {
         private readonly IMessagingUnitOfWork _unitOfWork;
         private readonly INotificationService _notificationService;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<MessagingService> _logger;
 
         public MessagingService(
             IMessagingUnitOfWork unitOfWork,
             INotificationService notificationService,
+            UserManager<ApplicationUser> userManager,
             ILogger<MessagingService> logger)
         {
             _unitOfWork = unitOfWork;
             _notificationService = notificationService;
+            _userManager = userManager;
             _logger = logger;
         }
 
@@ -48,20 +53,39 @@ namespace CulinaryRecipes.API.Services.Messaging
 
         public async Task<MessageRequest?> CreateMessageRequestAsync(string senderUserId, string recipientUserId)
         {
-            if (string.IsNullOrWhiteSpace(senderUserId) ||
-                string.IsNullOrWhiteSpace(recipientUserId) ||
-                senderUserId == recipientUserId)
+            if (string.IsNullOrWhiteSpace(senderUserId) || string.IsNullOrWhiteSpace(recipientUserId))
             {
+                _logger.LogWarning("Cannot create message request because sender or recipient is empty.");
                 return null;
             }
 
-            var existingConversation = await _unitOfWork.Conversations.GetByParticipantsAsync(senderUserId, recipientUserId);
+            var resolvedRecipientUserId = await ResolveRecipientUserIdAsync(recipientUserId);
+            if (string.IsNullOrWhiteSpace(resolvedRecipientUserId))
+            {
+                _logger.LogWarning(
+                    "Cannot create message request from {SenderUserId}: recipient '{RecipientInput}' could not be resolved.",
+                    senderUserId,
+                    recipientUserId);
+                return null;
+            }
+
+            if (senderUserId == resolvedRecipientUserId)
+            {
+                _logger.LogWarning("Cannot create message request because sender {SenderUserId} equals recipient.", senderUserId);
+                return null;
+            }
+
+            var existingConversation = await _unitOfWork.Conversations.GetByParticipantsAsync(senderUserId, resolvedRecipientUserId);
             if (existingConversation != null)
             {
+                _logger.LogInformation(
+                    "Message request skipped for users {SenderUserId}/{RecipientUserId} because a conversation already exists.",
+                    senderUserId,
+                    resolvedRecipientUserId);
                 return null;
             }
 
-            var existingRequest = await _unitOfWork.MessageRequests.GetPendingBetweenUsersAsync(senderUserId, recipientUserId);
+            var existingRequest = await _unitOfWork.MessageRequests.GetPendingBetweenUsersAsync(senderUserId, resolvedRecipientUserId);
             if (existingRequest != null)
             {
                 return existingRequest;
@@ -70,7 +94,7 @@ namespace CulinaryRecipes.API.Services.Messaging
             var request = new MessageRequest
             {
                 SenderUserId = senderUserId,
-                RecipientUserId = recipientUserId,
+                RecipientUserId = resolvedRecipientUserId,
                 CreatedAt = DateTime.UtcNow,
                 Status = MessageRequestStatus.Pending
             };
@@ -79,7 +103,7 @@ namespace CulinaryRecipes.API.Services.Messaging
             await _unitOfWork.SaveChangesAsync();
 
             await _notificationService.CreateAsync(
-                recipientUserId,
+                resolvedRecipientUserId,
                 senderUserId,
                 NotificationType.MessageRequest,
                 "New messaging request",
@@ -289,6 +313,36 @@ namespace CulinaryRecipes.API.Services.Messaging
                 MediaAttachmentType.Link => "Link",
                 _ => "Attachment"
             };
+        }
+
+        private async Task<string?> ResolveRecipientUserIdAsync(string recipientInput)
+        {
+            var normalizedInput = recipientInput?.Trim();
+            if (string.IsNullOrWhiteSpace(normalizedInput))
+            {
+                return null;
+            }
+
+            var userById = await _userManager.FindByIdAsync(normalizedInput);
+            if (userById != null)
+            {
+                return userById.Id.ToString();
+            }
+
+            var userByEmail = await _userManager.FindByEmailAsync(normalizedInput);
+            if (userByEmail != null)
+            {
+                return userByEmail.Id.ToString();
+            }
+
+            var userByName = await _userManager.FindByNameAsync(normalizedInput);
+            if (userByName != null)
+            {
+                return userByName.Id.ToString();
+            }
+
+            var userByNick = _userManager.Users.FirstOrDefault(u => u.Nick == normalizedInput);
+            return userByNick?.Id.ToString();
         }
     }
 }
