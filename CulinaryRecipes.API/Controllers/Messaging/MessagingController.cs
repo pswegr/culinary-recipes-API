@@ -63,10 +63,14 @@ namespace CulinaryRecipes.API.Controllers.Messaging
                 return Unauthorized();
             }
 
-            var request = await _messagingService.CreateMessageRequestAsync(userId, model.RecipientUserId);
+            var recipientIdentifier = !string.IsNullOrWhiteSpace(model.RecipientNick)
+                ? model.RecipientNick
+                : model.RecipientUserId;
+
+            var request = await _messagingService.CreateMessageRequestAsync(userId, recipientIdentifier);
             if (request == null)
             {
-                return BadRequest("Message request cannot be created.");
+                return BadRequest("Message request cannot be created. Verify recipientNick (or recipientUserId), and ensure no existing conversation/request already exists.");
             }
 
             return Ok(request);
