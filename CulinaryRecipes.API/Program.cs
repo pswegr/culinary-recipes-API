@@ -24,7 +24,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
                 "https://netreci.com",
-                "https://www.netreci.com")
+                "https://www.netreci.com",
+                "http://localhost:4200")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();

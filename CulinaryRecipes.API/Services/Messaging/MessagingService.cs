@@ -4,6 +4,7 @@ using CulinaryRecipes.API.Models.Identity;
 using CulinaryRecipes.API.Services.Messaging.Interfaces;
 using CulinaryRecipes.API.UnitOfWork.Messaging;
 using Microsoft.AspNetCore.Identity;
+using MongoDB.Bson;
 
 namespace CulinaryRecipes.API.Services.Messaging
 {
@@ -323,10 +324,13 @@ namespace CulinaryRecipes.API.Services.Messaging
                 return null;
             }
 
-            var userById = await _userManager.FindByIdAsync(normalizedInput);
-            if (userById != null)
+            if (ObjectId.TryParse(normalizedInput, out _))
             {
-                return userById.Id.ToString();
+                var userById = await _userManager.FindByIdAsync(normalizedInput);
+                if (userById != null)
+                {
+                    return userById.Id.ToString();
+                }
             }
 
             var userByEmail = await _userManager.FindByEmailAsync(normalizedInput);
