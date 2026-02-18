@@ -8,6 +8,8 @@ namespace CulinaryRecipes.API.Hubs
         Task MessageRequestReceived(MessageRequest request);
         Task MessageRequestUpdated(MessageRequest request);
         Task MessageReceived(ChatMessage message);
+        Task ConversationUpdated(Conversation conversation);
+        Task MessageAlertReceived(MessageAlert alert);
         Task NotificationReceived(Notification notification);
     }
 }

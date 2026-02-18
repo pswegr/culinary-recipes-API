@@ -21,13 +21,19 @@ namespace CulinaryRecipes.API.Repositories.Messaging
             return await _dao.Collection.Find(filter).FirstOrDefaultAsync();
         }
 
-        public async Task<List<Conversation>> GetForUserAsync(string userId)
+        public async Task<(List<Conversation> Conversations, long TotalCount)> GetForUserAsync(string userId, int skip, int take)
         {
             var filter = Builders<Conversation>.Filter.AnyEq(x => x.ParticipantUserIds, userId);
-            return await _dao.Collection.Find(filter)
+            var totalCount = await _dao.Collection.CountDocumentsAsync(filter);
+
+            var conversations = await _dao.Collection.Find(filter)
                 .SortByDescending(x => x.LastMessageAt)
                 .ThenByDescending(x => x.UpdatedAt)
+                .Skip(skip)
+                .Limit(take)
                 .ToListAsync();
+
+            return (conversations, totalCount);
         }
     }
 }

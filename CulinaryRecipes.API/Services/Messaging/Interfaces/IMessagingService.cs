@@ -10,7 +10,7 @@ namespace CulinaryRecipes.API.Services.Messaging.Interfaces
         Task<MessageRequest?> RespondToMessageRequestAsync(string requestId, string recipientUserId, bool accept);
         Task<ChatMessage?> SendMessageAsync(string senderUserId, SendMessageModel model);
         Task<List<MessageRequest>> GetPendingRequestsAsync(string userId);
-        Task<List<Conversation>> GetConversationsAsync(string userId);
+        Task<PagedResult<Conversation>> GetConversationsAsync(string userId, int skip, int take);
         Task<List<ChatMessage>> GetConversationMessagesAsync(string userId, string conversationId, int skip, int take);
         Task<bool> CanAccessConversationAsync(string userId, string conversationId);
     }

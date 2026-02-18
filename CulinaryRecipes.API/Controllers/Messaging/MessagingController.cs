@@ -20,14 +20,14 @@ namespace CulinaryRecipes.API.Controllers.Messaging
         }
 
         [HttpGet("conversations")]
-        public async Task<ActionResult<List<Conversation>>> GetConversations()
+        public async Task<ActionResult<PagedResult<Conversation>>> GetConversations([FromQuery] int skip = 0, [FromQuery] int take = 20)
         {
             if (!TryGetUserId(out var userId))
             {
                 return Unauthorized();
             }
 
-            var conversations = await _messagingService.GetConversationsAsync(userId);
+            var conversations = await _messagingService.GetConversationsAsync(userId, skip, take);
             return Ok(conversations);
         }
 
