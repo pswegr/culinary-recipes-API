@@ -15,5 +15,12 @@ namespace CulinaryRecipes.API.Models.Messaging
         public DateTime UpdatedAt { get; set; }
         public string LastMessagePreview { get; set; } = string.Empty;
         public DateTime? LastMessageAt { get; set; }
+        public string LastMessageSenderUserId { get; set; } = string.Empty;
+
+        [BsonIgnore]
+        public Dictionary<string, string> ParticipantNicks { get; set; } = new();
+
+        [BsonIgnore]
+        public string LastMessageSenderNick { get; set; } = string.Empty;
     }
 }

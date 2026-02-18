@@ -5,6 +5,6 @@ namespace CulinaryRecipes.API.Repositories.Messaging
     public interface IConversationRepository : IMessagingGenericRepository<Conversation>
     {
         Task<Conversation?> GetByParticipantsAsync(string firstUserId, string secondUserId);
-        Task<List<Conversation>> GetForUserAsync(string userId);
+        Task<(List<Conversation> Conversations, long TotalCount)> GetForUserAsync(string userId, int skip, int take);
     }
 }

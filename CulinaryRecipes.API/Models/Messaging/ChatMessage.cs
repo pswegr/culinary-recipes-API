@@ -17,5 +17,11 @@ namespace CulinaryRecipes.API.Models.Messaging
         public List<MediaAttachment> Attachments { get; set; } = new();
         public DateTime SentAt { get; set; }
         public bool IsRead { get; set; }
+
+        [BsonIgnore]
+        public string SenderNick { get; set; } = string.Empty;
+
+        [BsonIgnore]
+        public string RecipientNick { get; set; } = string.Empty;
     }
 }

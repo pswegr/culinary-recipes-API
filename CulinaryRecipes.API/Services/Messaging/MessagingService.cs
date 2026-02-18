@@ -1,7 +1,12 @@
+using CulinaryRecipes.API.Hubs;
+using CulinaryRecipes.API.Models.Identity;
 using CulinaryRecipes.API.Models.Messaging;
 using CulinaryRecipes.API.Models.Messaging.Requests;
 using CulinaryRecipes.API.Services.Messaging.Interfaces;
 using CulinaryRecipes.API.UnitOfWork.Messaging;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.SignalR;
+using MongoDB.Bson;
 
 namespace CulinaryRecipes.API.Services.Messaging
 {
@@ -9,15 +14,21 @@ namespace CulinaryRecipes.API.Services.Messaging
     {
         private readonly IMessagingUnitOfWork _unitOfWork;
         private readonly INotificationService _notificationService;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IHubContext<MessagingHub, IMessagingClient> _hubContext;
         private readonly ILogger<MessagingService> _logger;
 
         public MessagingService(
             IMessagingUnitOfWork unitOfWork,
             INotificationService notificationService,
+            UserManager<ApplicationUser> userManager,
+            IHubContext<MessagingHub, IMessagingClient> hubContext,
             ILogger<MessagingService> logger)
         {
             _unitOfWork = unitOfWork;
             _notificationService = notificationService;
+            _userManager = userManager;
+            _hubContext = hubContext;
             _logger = logger;
         }
 
@@ -48,20 +59,39 @@ namespace CulinaryRecipes.API.Services.Messaging
 
         public async Task<MessageRequest?> CreateMessageRequestAsync(string senderUserId, string recipientUserId)
         {
-            if (string.IsNullOrWhiteSpace(senderUserId) ||
-                string.IsNullOrWhiteSpace(recipientUserId) ||
-                senderUserId == recipientUserId)
+            if (string.IsNullOrWhiteSpace(senderUserId) || string.IsNullOrWhiteSpace(recipientUserId))
             {
+                _logger.LogWarning("Cannot create message request because sender or recipient is empty.");
                 return null;
             }
 
-            var existingConversation = await _unitOfWork.Conversations.GetByParticipantsAsync(senderUserId, recipientUserId);
+            var resolvedRecipientUserId = await ResolveRecipientUserIdAsync(recipientUserId);
+            if (string.IsNullOrWhiteSpace(resolvedRecipientUserId))
+            {
+                _logger.LogWarning(
+                    "Cannot create message request from {SenderUserId}: recipient '{RecipientInput}' could not be resolved.",
+                    senderUserId,
+                    recipientUserId);
+                return null;
+            }
+
+            if (senderUserId == resolvedRecipientUserId)
+            {
+                _logger.LogWarning("Cannot create message request because sender {SenderUserId} equals recipient.", senderUserId);
+                return null;
+            }
+
+            var existingConversation = await _unitOfWork.Conversations.GetByParticipantsAsync(senderUserId, resolvedRecipientUserId);
             if (existingConversation != null)
             {
+                _logger.LogInformation(
+                    "Message request skipped for users {SenderUserId}/{RecipientUserId} because a conversation already exists.",
+                    senderUserId,
+                    resolvedRecipientUserId);
                 return null;
             }
 
-            var existingRequest = await _unitOfWork.MessageRequests.GetPendingBetweenUsersAsync(senderUserId, recipientUserId);
+            var existingRequest = await _unitOfWork.MessageRequests.GetPendingBetweenUsersAsync(senderUserId, resolvedRecipientUserId);
             if (existingRequest != null)
             {
                 return existingRequest;
@@ -70,7 +100,7 @@ namespace CulinaryRecipes.API.Services.Messaging
             var request = new MessageRequest
             {
                 SenderUserId = senderUserId,
-                RecipientUserId = recipientUserId,
+                RecipientUserId = resolvedRecipientUserId,
                 CreatedAt = DateTime.UtcNow,
                 Status = MessageRequestStatus.Pending
             };
@@ -79,7 +109,7 @@ namespace CulinaryRecipes.API.Services.Messaging
             await _unitOfWork.SaveChangesAsync();
 
             await _notificationService.CreateAsync(
-                recipientUserId,
+                resolvedRecipientUserId,
                 senderUserId,
                 NotificationType.MessageRequest,
                 "New messaging request",
@@ -88,6 +118,9 @@ namespace CulinaryRecipes.API.Services.Messaging
                 {
                     { "requestStatus", request.Status.ToString() }
                 });
+
+            await _hubContext.Clients.User(senderUserId).MessageRequestUpdated(request);
+            await _hubContext.Clients.User(request.RecipientUserId).MessageRequestReceived(request);
 
             return request;
         }
@@ -110,6 +143,7 @@ namespace CulinaryRecipes.API.Services.Messaging
             await _unitOfWork.MessageRequests.ReplaceAsync(request.id!, request);
 
             string conversationId = string.Empty;
+            Conversation? conversationToBroadcast = null;
             if (accept)
             {
                 var existingConversation = await _unitOfWork.Conversations.GetByParticipantsAsync(request.SenderUserId, request.RecipientUserId);
@@ -121,15 +155,18 @@ namespace CulinaryRecipes.API.Services.Messaging
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow,
                         LastMessagePreview = string.Empty,
-                        LastMessageAt = null
+                        LastMessageAt = null,
+                        LastMessageSenderUserId = string.Empty
                     };
 
                     await _unitOfWork.Conversations.InsertAsync(conversation);
                     conversationId = conversation.id ?? string.Empty;
+                    conversationToBroadcast = conversation;
                 }
                 else
                 {
                     conversationId = existingConversation.id ?? string.Empty;
+                    conversationToBroadcast = existingConversation;
                 }
             }
 
@@ -147,6 +184,16 @@ namespace CulinaryRecipes.API.Services.Messaging
                     { "conversationId", conversationId }
                 });
 
+            await _hubContext.Clients.User(request.RecipientUserId).MessageRequestUpdated(request);
+            await _hubContext.Clients.User(request.SenderUserId).MessageRequestUpdated(request);
+
+            if (accept && conversationToBroadcast != null)
+            {
+                await PopulateConversationNickDataAsync(new List<Conversation> { conversationToBroadcast });
+                await _hubContext.Clients.User(request.SenderUserId).ConversationUpdated(conversationToBroadcast);
+                await _hubContext.Clients.User(request.RecipientUserId).ConversationUpdated(conversationToBroadcast);
+            }
+
             return request;
         }
 
@@ -157,12 +204,13 @@ namespace CulinaryRecipes.API.Services.Messaging
                 return null;
             }
 
-            if (string.IsNullOrWhiteSpace(model.Content) && model.Attachments.Count == 0)
+            var attachments = model.Attachments ?? new List<MediaAttachment>();
+            if (string.IsNullOrWhiteSpace(model.Content) && attachments.Count == 0)
             {
                 return null;
             }
 
-            if (model.Attachments.Any(a => !IsValidAttachment(a)))
+            if (attachments.Any(a => !IsValidAttachment(a)))
             {
                 return null;
             }
@@ -187,11 +235,17 @@ namespace CulinaryRecipes.API.Services.Messaging
                 return null;
             }
 
+            var defaultRecipientUserId = conversation.ParticipantUserIds.FirstOrDefault(x => x != senderUserId) ?? string.Empty;
             var recipientUserId = !string.IsNullOrWhiteSpace(model.RecipientUserId)
                 ? model.RecipientUserId
-                : conversation.ParticipantUserIds.FirstOrDefault(x => x != senderUserId) ?? string.Empty;
+                : defaultRecipientUserId;
 
-            if (string.IsNullOrWhiteSpace(recipientUserId))
+            if (!conversation.ParticipantUserIds.Contains(recipientUserId))
+            {
+                recipientUserId = defaultRecipientUserId;
+            }
+
+            if (string.IsNullOrWhiteSpace(recipientUserId) || recipientUserId == senderUserId)
             {
                 return null;
             }
@@ -202,19 +256,24 @@ namespace CulinaryRecipes.API.Services.Messaging
                 SenderUserId = senderUserId,
                 RecipientUserId = recipientUserId,
                 Content = model.Content,
-                Attachments = model.Attachments,
+                Attachments = attachments,
                 SentAt = DateTime.UtcNow,
                 IsRead = false
             };
 
             await _unitOfWork.Messages.InsertAsync(message);
 
+            var messagePreview = BuildPreview(message.Content, message.Attachments);
             conversation.UpdatedAt = message.SentAt;
             conversation.LastMessageAt = message.SentAt;
-            conversation.LastMessagePreview = BuildPreview(message.Content, message.Attachments);
+            conversation.LastMessagePreview = messagePreview;
+            conversation.LastMessageSenderUserId = senderUserId;
             await _unitOfWork.Conversations.ReplaceAsync(conversation.id!, conversation);
 
             await _unitOfWork.SaveChangesAsync();
+
+            await PopulateMessageNickDataAsync(new List<ChatMessage> { message });
+            await PopulateConversationNickDataAsync(new List<Conversation> { conversation });
 
             await _notificationService.CreateAsync(
                 recipientUserId,
@@ -224,8 +283,33 @@ namespace CulinaryRecipes.API.Services.Messaging
                 message.id ?? string.Empty,
                 new Dictionary<string, string>
                 {
-                    { "conversationId", conversation.id ?? string.Empty }
+                    { "conversationId", conversation.id ?? string.Empty },
+                    { "senderUserId", senderUserId },
+                    { "senderNick", message.SenderNick },
+                    { "messagePreview", messagePreview },
+                    { "sentAtUtc", message.SentAt.ToString("O") }
                 });
+
+            var targetUserIds = new[] { senderUserId, recipientUserId }
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct()
+                .ToList();
+
+            if (targetUserIds.Count > 0)
+            {
+                await _hubContext.Clients.Users(targetUserIds).MessageReceived(message);
+                await _hubContext.Clients.Users(targetUserIds).ConversationUpdated(conversation);
+            }
+
+            await _hubContext.Clients.User(recipientUserId).MessageAlertReceived(new MessageAlert
+            {
+                ConversationId = conversation.id ?? string.Empty,
+                MessageId = message.id ?? string.Empty,
+                SenderUserId = senderUserId,
+                SenderNick = message.SenderNick,
+                Preview = messagePreview,
+                SentAt = message.SentAt
+            });
 
             return message;
         }
@@ -235,9 +319,21 @@ namespace CulinaryRecipes.API.Services.Messaging
             return await _unitOfWork.MessageRequests.GetPendingForRecipientAsync(userId);
         }
 
-        public async Task<List<Conversation>> GetConversationsAsync(string userId)
+        public async Task<PagedResult<Conversation>> GetConversationsAsync(string userId, int skip, int take)
         {
-            return await _unitOfWork.Conversations.GetForUserAsync(userId);
+            var normalizedTake = Math.Clamp(take, 1, 100);
+            var normalizedSkip = Math.Max(skip, 0);
+            var (conversations, totalCount) = await _unitOfWork.Conversations.GetForUserAsync(userId, normalizedSkip, normalizedTake);
+
+            await PopulateConversationNickDataAsync(conversations);
+
+            return new PagedResult<Conversation>
+            {
+                Items = conversations,
+                Skip = normalizedSkip,
+                Take = normalizedTake,
+                TotalCount = totalCount
+            };
         }
 
         public async Task<List<ChatMessage>> GetConversationMessagesAsync(string userId, string conversationId, int skip, int take)
@@ -251,13 +347,121 @@ namespace CulinaryRecipes.API.Services.Messaging
             var normalizedTake = Math.Clamp(take, 1, 200);
             var normalizedSkip = Math.Max(skip, 0);
             var messages = await _unitOfWork.Messages.GetForConversationAsync(conversationId, normalizedSkip, normalizedTake);
-            return messages.OrderBy(x => x.SentAt).ToList();
+            var orderedMessages = messages.OrderBy(x => x.SentAt).ToList();
+            await PopulateMessageNickDataAsync(orderedMessages);
+
+            return orderedMessages;
         }
 
         public async Task<bool> CanAccessConversationAsync(string userId, string conversationId)
         {
             var conversation = await _unitOfWork.Conversations.GetByIdAsync(conversationId);
             return conversation != null && conversation.ParticipantUserIds.Contains(userId);
+        }
+
+        private async Task PopulateConversationNickDataAsync(List<Conversation> conversations)
+        {
+            if (conversations.Count == 0)
+            {
+                return;
+            }
+
+            var userIds = conversations
+                .SelectMany(c => c.ParticipantUserIds)
+                .Concat(conversations.Select(c => c.LastMessageSenderUserId))
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+
+            var nickLookup = await GetNickLookupAsync(userIds);
+
+            foreach (var conversation in conversations)
+            {
+                conversation.ParticipantNicks = conversation.ParticipantUserIds
+                    .Distinct()
+                    .ToDictionary(
+                        userId => userId,
+                        userId => nickLookup.TryGetValue(userId, out var nick) ? nick : userId);
+
+                conversation.LastMessageSenderNick = string.IsNullOrWhiteSpace(conversation.LastMessageSenderUserId)
+                    ? string.Empty
+                    : nickLookup.TryGetValue(conversation.LastMessageSenderUserId, out var senderNick)
+                        ? senderNick
+                        : conversation.LastMessageSenderUserId;
+            }
+        }
+
+        private async Task PopulateMessageNickDataAsync(List<ChatMessage> messages)
+        {
+            if (messages.Count == 0)
+            {
+                return;
+            }
+
+            var userIds = messages
+                .SelectMany(m => new[] { m.SenderUserId, m.RecipientUserId })
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+
+            var nickLookup = await GetNickLookupAsync(userIds);
+
+            foreach (var message in messages)
+            {
+                message.SenderNick = nickLookup.TryGetValue(message.SenderUserId, out var senderNick)
+                    ? senderNick
+                    : message.SenderUserId;
+
+                message.RecipientNick = nickLookup.TryGetValue(message.RecipientUserId, out var recipientNick)
+                    ? recipientNick
+                    : message.RecipientUserId;
+            }
+        }
+
+        private async Task<Dictionary<string, string>> GetNickLookupAsync(IEnumerable<string> userIds)
+        {
+            var distinctUserIds = userIds
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+
+            if (distinctUserIds.Count == 0)
+            {
+                return new Dictionary<string, string>();
+            }
+
+            var lookupEntries = await Task.WhenAll(distinctUserIds.Select(async userId =>
+            {
+                var user = await _userManager.FindByIdAsync(userId);
+                return new KeyValuePair<string, string>(userId, ResolveUserNick(user, userId));
+            }));
+
+            return lookupEntries.ToDictionary(x => x.Key, x => x.Value);
+        }
+
+        private static string ResolveUserNick(ApplicationUser? user, string fallbackUserId)
+        {
+            if (user == null)
+            {
+                return fallbackUserId;
+            }
+
+            if (!string.IsNullOrWhiteSpace(user.Nick))
+            {
+                return user.Nick;
+            }
+
+            if (!string.IsNullOrWhiteSpace(user.UserName))
+            {
+                return user.UserName;
+            }
+
+            if (!string.IsNullOrWhiteSpace(user.Email))
+            {
+                return user.Email;
+            }
+
+            return fallbackUserId;
         }
 
         private static bool IsValidAttachment(MediaAttachment attachment)
@@ -289,6 +493,39 @@ namespace CulinaryRecipes.API.Services.Messaging
                 MediaAttachmentType.Link => "Link",
                 _ => "Attachment"
             };
+        }
+
+        private async Task<string?> ResolveRecipientUserIdAsync(string recipientInput)
+        {
+            var normalizedInput = recipientInput?.Trim();
+            if (string.IsNullOrWhiteSpace(normalizedInput))
+            {
+                return null;
+            }
+
+            if (ObjectId.TryParse(normalizedInput, out _))
+            {
+                var userById = await _userManager.FindByIdAsync(normalizedInput);
+                if (userById != null)
+                {
+                    return userById.Id.ToString();
+                }
+            }
+
+            var userByEmail = await _userManager.FindByEmailAsync(normalizedInput);
+            if (userByEmail != null)
+            {
+                return userByEmail.Id.ToString();
+            }
+
+            var userByName = await _userManager.FindByNameAsync(normalizedInput);
+            if (userByName != null)
+            {
+                return userByName.Id.ToString();
+            }
+
+            var userByNick = _userManager.Users.FirstOrDefault(u => u.Nick == normalizedInput);
+            return userByNick?.Id.ToString();
         }
     }
 }

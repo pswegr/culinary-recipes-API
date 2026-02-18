@@ -40,40 +40,32 @@ namespace CulinaryRecipes.API.Hubs
         public async Task SendMessageRequest(CreateMessageRequestModel model)
         {
             var senderUserId = GetRequiredUserId();
-            var request = await _messagingService.CreateMessageRequestAsync(senderUserId, model.RecipientUserId);
-            if (request == null)
+            var recipientIdentifier = !string.IsNullOrWhiteSpace(model.RecipientNick)
+                ? model.RecipientNick
+                : model.RecipientUserId;
+
+            if (await _messagingService.CreateMessageRequestAsync(senderUserId, recipientIdentifier) == null)
             {
                 throw new HubException("Message request cannot be created.");
             }
-
-            await Clients.Caller.MessageRequestUpdated(request);
-            await Clients.User(request.RecipientUserId).MessageRequestReceived(request);
         }
 
         public async Task RespondToMessageRequest(string requestId, RespondMessageRequestModel model)
         {
             var recipientUserId = GetRequiredUserId();
-            var request = await _messagingService.RespondToMessageRequestAsync(requestId, recipientUserId, model.Accept);
-            if (request == null)
+            if (await _messagingService.RespondToMessageRequestAsync(requestId, recipientUserId, model.Accept) == null)
             {
                 throw new HubException("Message request cannot be updated.");
             }
-
-            await Clients.Caller.MessageRequestUpdated(request);
-            await Clients.User(request.SenderUserId).MessageRequestUpdated(request);
         }
 
         public async Task SendMessage(SendMessageModel model)
         {
             var senderUserId = GetRequiredUserId();
-            var message = await _messagingService.SendMessageAsync(senderUserId, model);
-            if (message == null)
+            if (await _messagingService.SendMessageAsync(senderUserId, model) == null)
             {
                 throw new HubException("Message cannot be sent.");
             }
-
-            await Clients.Caller.MessageReceived(message);
-            await Clients.User(message.RecipientUserId).MessageReceived(message);
         }
 
         private string GetRequiredUserId()

@@ -48,22 +48,34 @@ dotnet run --project CulinaryRecipes.API/CulinaryRecipes.API.csproj
 
 ## REST payload contracts
 
-### 1) List conversations
+### 1) List conversations (paginated)
 
-- **GET** `/api/Messaging/conversations`
+- **GET** `/api/Messaging/conversations?skip=0&take=20`
 - **Response** `200 OK`
 
 ```json
-[
-  {
-    "id": "67ce0ab53ca0f69f633899a2",
-    "participantUserIds": ["user-1", "user-2"],
-    "createdAt": "2026-02-07T18:24:38.000Z",
-    "updatedAt": "2026-02-07T18:25:04.000Z",
-    "lastMessagePreview": "Hey, check this video",
-    "lastMessageAt": "2026-02-07T18:25:04.000Z"
-  }
-]
+{
+  "items": [
+    {
+      "id": "67ce0ab53ca0f69f633899a2",
+      "participantUserIds": ["user-1", "user-2"],
+      "participantNicks": {
+        "user-1": "chef_anna",
+        "user-2": "mario"
+      },
+      "createdAt": "2026-02-07T18:24:38.000Z",
+      "updatedAt": "2026-02-07T18:25:04.000Z",
+      "lastMessagePreview": "Hey, check this video",
+      "lastMessageAt": "2026-02-07T18:25:04.000Z",
+      "lastMessageSenderUserId": "user-2",
+      "lastMessageSenderNick": "mario"
+    }
+  ],
+  "skip": 0,
+  "take": 20,
+  "totalCount": 48,
+  "hasMore": true
+}
 ```
 
 ### 2) List messages for conversation
@@ -77,7 +89,9 @@ dotnet run --project CulinaryRecipes.API/CulinaryRecipes.API.csproj
     "id": "67ce0abe3ca0f69f633899a3",
     "conversationId": "67ce0ab53ca0f69f633899a2",
     "senderUserId": "user-1",
+    "senderNick": "chef_anna",
     "recipientUserId": "user-2",
+    "recipientNick": "mario",
     "content": "Recipe video here",
     "attachments": [
       {
@@ -100,9 +114,11 @@ dotnet run --project CulinaryRecipes.API/CulinaryRecipes.API.csproj
 
 ```json
 {
-  "recipientUserId": "user-2"
+  "recipientNick": "user2"
 }
 ```
+
+`recipientNick` is preferred. `recipientUserId` is still supported for backward compatibility.
 
 ### 4) Respond to messaging request
 
@@ -148,6 +164,13 @@ dotnet run --project CulinaryRecipes.API/CulinaryRecipes.API.csproj
 - **GET** `/api/Notifications/unread-count`
 - **POST** `/api/Notifications/{notificationId}/read`
 
+For `NotificationType.Message`, notification `metadata` now includes:
+- `conversationId`
+- `senderUserId`
+- `senderNick`
+- `messagePreview`
+- `sentAtUtc`
+
 ---
 
 ## Enum values used by frontend
@@ -177,6 +200,7 @@ dotnet run --project CulinaryRecipes.API/CulinaryRecipes.API.csproj
 
 - Hub endpoint: `/hubs/messaging`
 - Auth: same JWT (Bearer). For JS client, use `accessTokenFactory`.
+- Real-time sends are now emitted for both Hub-originated actions and REST-originated actions.
 
 ### Client -> server methods
 
@@ -191,7 +215,13 @@ dotnet run --project CulinaryRecipes.API/CulinaryRecipes.API.csproj
 - `MessageRequestReceived(MessageRequest request)`
 - `MessageRequestUpdated(MessageRequest request)`
 - `MessageReceived(ChatMessage message)`
+- `ConversationUpdated(Conversation conversation)`
+- `MessageAlertReceived(MessageAlert alert)`
 - `NotificationReceived(Notification notification)`
+
+`ConversationUpdated` is intended for instant conversation list refresh.
+
+`MessageAlertReceived` is intended for UI attention logic (tab title and popup when widget is hidden).
 
 ### Handshake payload
 
@@ -205,10 +235,27 @@ dotnet run --project CulinaryRecipes.API/CulinaryRecipes.API.csproj
 }
 ```
 
-### Minimal JavaScript client example
+### Message alert payload
+
+```json
+{
+  "conversationId": "67ce0ab53ca0f69f633899a2",
+  "messageId": "67ce0abe3ca0f69f633899a3",
+  "senderUserId": "user-2",
+  "senderNick": "mario",
+  "preview": "Hey, check this video",
+  "sentAt": "2026-02-07T18:25:04.000Z"
+}
+```
+
+### Minimal JavaScript client example (with title + popup behavior)
 
 ```ts
 import * as signalR from "@microsoft/signalr";
+
+const defaultTitle = document.title;
+let unreadMessageAlerts = 0;
+let isMessengerWidgetVisible = false;
 
 const connection = new signalR.HubConnectionBuilder()
   .withUrl("https://<api-host>/hubs/messaging", {
@@ -221,12 +268,38 @@ connection.on("HandshakeAcknowledged", (handshake) => {
   console.log("connected", handshake);
 });
 
+connection.on("ConversationUpdated", (conversation) => {
+  // Upsert conversation in local store (no manual full refresh required)
+  upsertConversation(conversation);
+});
+
 connection.on("MessageReceived", (message) => {
-  console.log("new message", message);
+  appendMessage(message);
+});
+
+connection.on("MessageAlertReceived", (alert) => {
+  unreadMessageAlerts += 1;
+  document.title = `(${unreadMessageAlerts}) New message from ${alert.senderNick}`;
+
+  if (!isMessengerWidgetVisible) {
+    showBottomRightPopup({
+      title: `New message from ${alert.senderNick}`,
+      text: alert.preview,
+      onClick: () => openConversation(alert.conversationId)
+    });
+  }
 });
 
 connection.on("NotificationReceived", (notification) => {
-  console.log("notification", notification);
+  if (notification.type === 1 && notification.metadata?.conversationId) {
+    // Optional fallback refresh if your store is not using ConversationUpdated upserts yet
+    refreshConversationsPage(0, 20);
+  }
+});
+
+window.addEventListener("focus", () => {
+  unreadMessageAlerts = 0;
+  document.title = defaultTitle;
 });
 
 await connection.start();
