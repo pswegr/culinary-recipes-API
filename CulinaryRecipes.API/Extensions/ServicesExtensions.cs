@@ -1,6 +1,7 @@
 using CulinaryRecipes.API.Data;
 using CulinaryRecipes.API.Data.Dao;
 using CulinaryRecipes.API.Data.Interfaces;
+using CulinaryRecipes.API.Data.Finance;
 using CulinaryRecipes.API.Data.Messaging;
 using CulinaryRecipes.API.Data.Messaging.Dao;
 using CulinaryRecipes.API.Data.Messaging.Interfaces;
@@ -12,6 +13,7 @@ using CulinaryRecipes.API.Repositories;
 using CulinaryRecipes.API.Repositories.Messaging;
 using CulinaryRecipes.API.Services;
 using CulinaryRecipes.API.Services.Interfaces;
+using CulinaryRecipes.API.Services.Finance;
 using CulinaryRecipes.API.Services.Messaging;
 using CulinaryRecipes.API.Services.Messaging.Interfaces;
 using CulinaryRecipes.API.UnitOfWork;
@@ -55,6 +57,9 @@ namespace CulinaryRecipes.API.Extensions
             services.AddScoped<IMessagingUnitOfWork, MessagingUnitOfWork>();
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<IMessagingService, MessagingService>();
+
+            services.AddScoped<IFinanceMongoDbContext, FinanceMongoDbContext>();
+            services.AddScoped<IFinanceService, FinanceService>();
 
             services.AddSignalR();
             services.AddSingleton<IUserIdProvider, HubUserIdProvider>();

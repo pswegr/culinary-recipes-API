@@ -4,6 +4,7 @@ using CulinaryRecipes.API.Hubs;
 using CulinaryRecipes.API.Models;
 using CulinaryRecipes.API.Models.Identity;
 using CulinaryRecipes.API.Models.Messaging;
+using CulinaryRecipes.API.Models.Finance;
 using Microsoft.OpenApi.Models;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
@@ -24,7 +25,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
                 "https://netreci.com",
-                "https://www.netreci.com")
+                "https://www.netreci.com",
+                "http://localhost:4200")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -40,6 +42,9 @@ builder.Services.Configure<IdentityDatabaseSettings>(
 
 builder.Services.Configure<MessagingDatabaseSettings>(
     builder.Configuration.GetSection("MessagingDatabase"));
+
+builder.Services.Configure<FinanceDatabaseSettings>(
+    builder.Configuration.GetSection("FinanceDatabase"));
 
 builder.Services.Configure<EmailSettings>(
     builder.Configuration.GetSection("SMTP"));
