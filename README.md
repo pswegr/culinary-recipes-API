@@ -18,6 +18,13 @@ dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set
 dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "Jwt:Key" "YourLongRandomJwtSigningKeyAtLeast32Chars"
 ```
 
+The financial manager stores data in a separate Mongo database named `Finance` by default. It reuses the primary Mongo connection unless a dedicated finance connection is configured:
+
+```bash
+dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "FinanceDatabase:ConnectionString" "mongodb://localhost:27017"
+dotnet user-secrets --project CulinaryRecipes.API/CulinaryRecipes.API.csproj set "FinanceDatabase:DatabaseName" "Finance"
+```
+
 Alternative to user-secrets for keys:
 - `MJ_APIKEY_PUBLIC`
 - `MJ_APIKEY_PRIVATE`
